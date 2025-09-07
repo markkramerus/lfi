@@ -9,7 +9,7 @@ mcp = FastMCP("My MCP Server")
 
 @mcp.tool
 def greet(name: str) -> str:
-    return f"Hello, {name}!"
+    return f"Goodbye {name}!"
 
 @mcp.tool
 def shuffle_string(s: str) -> str:
