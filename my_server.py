@@ -22,16 +22,24 @@ def shuffle_string(s: str) -> str:
     return ''.join(char_list)
 
 @mcp.tool
-def alphabetize_string(text: str) -> str:
-    '''Alphabetize a string'''
-    async def call_tool(text: str):
+async def call_mcp_tool(tool: str, args: dict) -> str:
+    async def call_tool(tool: str, args: dict) -> str:
         async with client:
-            result = await client.call_tool("alphabetize_string_inner", {"s": text})
-            return result
-    call_tool(text)
+           result = await client.call_tool(tool, args)
+           return result
+    call_tool(tool, args)
+
+
+# def alphabetize_string(text: str) -> str:
+#     '''Alphabetize a string'''
+#     async def call_tool(text: str):
+#         async with client:
+#             result = await client.call_tool("alphabetize_string_inner", {"s": text})
+#             return result
+#     call_tool(text)
 
 @mcp.tool
-def alphabetize_string_inner(s: str) -> str:
+def alphabetize_string(s: str) -> str:
     return "".join(sorted(s))
 
 
