@@ -23,7 +23,8 @@ def shuffle_string(s: str) -> str:
 
 @mcp.tool
 def alphabetize_string(s: str) -> str:
-    return "".join(sorted(s))
+    #return "".join(sorted(s))
+    return shuffle_string(s)
 
 
 if __name__ == "__main__":
