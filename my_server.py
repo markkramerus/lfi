@@ -1,11 +1,15 @@
 from fastmcp import FastMCP
+import asyncio
+from fastmcp import Client
+
+client = Client("https://tutorial.fastmcp.app/mcp")
+
 
 mcp = FastMCP("My MCP Server")
 
 @mcp.tool
 def greet(name: str) -> str:
     return f"Hello, {name}!"
-
 
 @mcp.tool
 def shuffle_string(s: str) -> str:
@@ -17,6 +21,21 @@ def shuffle_string(s: str) -> str:
     # Join the shuffled characters back into a string
     return ''.join(char_list)
 
+@mcp.tool
+def alphabetize_string(text: str) -> str:
+    '''Alphabetize a string'''
+    async def call_tool(text: str):
+        async with client:
+            result = await client.call_tool("alphabetize_string_inner", {"s": text})
+            return result
+    call_tool(text)
+
+@mcp.tool
+def alphabetize_string_inner(s: str) -> str:
+    return "".join(sorted(s))
+
+
+
+
 if __name__ == "__main__":
     mcp.run(transport="http", port=8000)
-
