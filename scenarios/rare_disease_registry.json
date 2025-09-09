@@ -1,0 +1,102 @@
+{
+  "metadata": {
+    "id": "rare_disease_registry_submission",
+    "title": "Rare Disease Registry Patient Submission",
+    "description": "A clinical agent attempts to submit a patient's necessary information to a rare disease registry for enrollment and tracking.",
+    "background": "In this scenario, a clinician needs to enroll a patient with a rare genetic disorder into a national registry to facilitate research, treatment tracking, and access to specialized resources. The interaction involves verifying patient eligibility, confirming required data fields, and submitting the information securely through conversational exchange.",
+    "challenges": [
+      "Ensuring accurate patient identification and consent verification without direct data sharing via tools",
+      "Negotiating and confirming the specific data elements required by the registry",
+      "Handling sensitive genetic and clinical information through progressive disclosure in conversation",
+      "Formalizing the submission as a terminal action that ends the interaction"
+    ]
+  },
+  "agents": [
+    {
+      "agentId": "clinical_agent",
+      "principal": {
+        "type": "individual",
+        "name": "Dr. Emily Rodriguez",
+        "description": "Geneticist specializing in rare metabolic disorders"
+      },
+      "situation": "You have a new patient diagnosed with Gaucher disease who meets registry criteria and has provided consent for enrollment.",
+      "systemPrompt": "You are an agent representing Dr. Emily Rodriguez, a geneticist. Your role is to facilitate enrollment of eligible patients into rare disease registries. Begin by introducing yourself and the purpose, then confirm the registry's requirements for submission. Use tools to retrieve only the specific patient information needed based on the registry's guidance. Ensure patient consent and eligibility are verified before sharing any details.",
+      "goals": [
+        "Verify registry submission requirements",
+        "Provide necessary patient clinical and genetic data",
+        "Complete successful registry enrollment"
+      ],
+      "tools": [],
+      "knowledgeBase": {
+        "patient": {
+          "mrn": "MRN-123456",
+          "name": "Alex Rivera",
+          "dob": "2010-05-22",
+          "diagnosis": "Gaucher disease type 1",
+          "consentStatus": "Signed and dated 2024-09-01"
+        },
+        "clinicalRecords": [
+          {
+            "date": "2024-08-15",
+            "type": "initial_diagnosis",
+            "notes": "Confirmed Gaucher disease via enzyme assay and genetic testing (GBA gene mutation). Patient presents with splenomegaly, fatigue, and bone pain."
+          },
+          {
+            "date": "2024-09-01",
+            "type": "consent",
+            "notes": "Patient/guardian signed informed consent for registry participation."
+          }
+        ],
+        "geneticData": {
+          "gene": "GBA",
+          "mutation": "N370S homozygous",
+          "testDate": "2024-08-15",
+          "lab": "Genomics Lab Inc."
+        }
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Dr. Emily Rodriguez, a geneticist at City Medical Center. I'm reaching out to submit enrollment information for our patient Alex Rivera, who has been diagnosed with Gaucher disease and has consented to registry participation. Could we confirm the specific data elements and format required for submission before I provide the details?"
+    },
+    {
+      "agentId": "registry_agent",
+      "principal": {
+        "type": "organization",
+        "name": "National Rare Disease Registry",
+        "description": "Centralized database for tracking rare disease cases to support research and treatment"
+      },
+      "situation": "You handle incoming submission requests from clinicians for patient enrollment in the rare disease registry.",
+      "systemPrompt": "You are an agent representing the National Rare Disease Registry. First, verify the submitting clinician's identity and authority, the patient's identity (full name, DOB, MRN), and confirm consent for data sharing. Clarify the specific disease and required data fields if not specified. Only after verification, guide the submission process step-by-step, requesting targeted information via conversation. Use tools to check eligibility criteria and record the final submission.",
+      "goals": [
+        "Verify submitter and patient identities",
+        "Confirm eligibility against registry criteria",
+        "Collect and record complete submission data",
+        "Issue confirmation of enrollment"
+      ],
+      "tools": [],
+      "knowledgeBase": {
+        "eligibilityCriteria": {
+          "gaucher_disease": {
+            "requiredFields": [
+              "patient_demographics",
+              "diagnosis_confirmation",
+              "genetic_testing_results",
+              "consent_documentation",
+              "initial_symptoms",
+              "current_treatment"
+            ],
+            "exclusions": [
+              "Patients without confirmed genetic diagnosis",
+              "No consent for data sharing"
+            ],
+            "dataFormat": "Structured JSON with sections for each required field"
+          }
+        },
+        "submissionGuidelines": {
+          "process": "Step 1: Verify identities. Step 2: Confirm eligibility. Step 3: Collect data progressively. Step 4: Finalize enrollment.",
+          "privacy": "All data handled per HIPAA and registry protocols."
+        },
+        "enrollmentSequence": "RDR-2024-"
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing the National Rare Disease Registry. We facilitate enrollment of patients with rare conditions to support research and care coordination. If you're initiating a submission, please provide the clinician's credentials, patient identifiers, and the specific disease for verification. What assistance can I provide regarding registry enrollment?"
+    }
+  ]
+}
