@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat History</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="header-container">
+        <h2>Language-First Interoperability</h2>
+        <h2 id="scenario-title"></h2>
+        <h3 id="scenario-description"></h3>
+    </div>
+    <div class="chat-container" id="chat-container">
+        <!-- Chat messages will be inserted here by JavaScript -->
+    </div>
+
+    <script>
+        async function fetchScenarioInfo() {
+            const response = await fetch('/info');
+            const info = await response.json();
+            document.getElementById('scenario-title').textContent = info.title;
+            document.getElementById('scenario-description').textContent = info.description;
+        }
+
+        async function fetchChatHistory() {
+            const response = await fetch('/history');
+            const chatHistory = await response.json();
+            const chatContainer = document.getElementById('chat-container');
+            
+            // Avoid re-rendering if the history hasn't changed
+            if (JSON.stringify(chatContainer.dataset.history) === JSON.stringify(chatHistory)) {
+                return;
+            }
+            // Check if user is near the bottom before new content is added
+            const threshold = 5; // pixels
+            const isScrolledToBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + threshold;
+
+            // Avoid re-rendering if the history hasn't changed
+            if (JSON.stringify(chatContainer.dataset.history) === JSON.stringify(chatHistory)) {
+                return;
+            }
+            chatContainer.dataset.history = JSON.stringify(chatHistory);
+
+            chatContainer.innerHTML = ''; // Clear previous messages
+
+            chatHistory.forEach(message => {
+                const side = message.role === 'assistant' ? 'left' : 'right';
+                const messageElement = document.createElement('div');
+
+                if (message.type === 'tool') {
+                    messageElement.classList.add('tool-call', side);
+                    messageElement.textContent = message.content;
+                } else {
+                    messageElement.classList.add('chat-balloon', side);
+
+                    const agentName = document.createElement('div');
+                    agentName.classList.add('agent-name');
+                    agentName.textContent = message.agent_id;
+
+                    const messageContent = document.createElement('div');
+                    messageContent.classList.add('message-content');
+                    messageContent.textContent = message.content;
+
+                    messageElement.appendChild(agentName);
+                    messageElement.appendChild(messageContent);
+                }
+                chatContainer.appendChild(messageElement);
+            });
+
+            // Auto-scroll only if the user was already at the bottom
+            if (isScrolledToBottom) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+
+        // Poll for scenario info until it's available
+        const infoInterval = setInterval(async () => {
+            const response = await fetch('/info');
+            if (response.ok) {
+                const info = await response.json();
+                if (info && info.title) {
+                    document.getElementById('scenario-title').textContent = info.title;
+                    document.getElementById('scenario-description').textContent = info.description;
+                    clearInterval(infoInterval); // Stop polling once data is received
+                }
+            }
+        }, 500); // Check every 500ms
+
+        // Fetch history every 2 seconds
+        setInterval(fetchChatHistory, 2000);
+
+        // Initial fetch
+        fetchChatHistory();
+    </script>
+</body>
+</html>

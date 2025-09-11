@@ -97,24 +97,6 @@ def conversation_history(history):
 </CONVERSATION_HISTORY>
 """
 
-def finalization_reminder(tool_config):
-    if tool_config is None:
-        print("WARNING: tool_config is None")
-        return ""
-    if "true" in str(tool_config.get("endsConversation","false")).lower():
-        return """
-<FINALIZATION>
-You have invoked a terminal tool that ends the conversation.
-Compose ONE final message to the remote agent:
-- Summarize the outcome and key reasons.
-- Your response will be the last message in the conversation.
-- Compose ONE final message to the remote agent summarizing the outcome and key reasons.
-- Include the exact phrase "END OF CONVERSATION" at the conclusion of your response.
-</FINALIZATION>
-
-"""
-    else:
-        return ""
 
 def build_tool_surrogate_prompt(scenario, agent_config, tool_name, tool_config, args, chat_history):
     """
@@ -126,7 +108,6 @@ def build_tool_surrogate_prompt(scenario, agent_config, tool_name, tool_config, 
     # print("4 ", agent_profile(agent_config))
     # print("5 ", knowledge_base(agent_config))
     # print("6 ", general_guidance())
-    # print("7 ", finalization_reminder(tool_config))
 
     prompt_parts = [
         task(tool_name, tool_config, args),
@@ -135,7 +116,6 @@ def build_tool_surrogate_prompt(scenario, agent_config, tool_name, tool_config, 
         agent_profile(agent_config),
         knowledge_base(agent_config),
         general_guidance(),
-        finalization_reminder(tool_config)
     ]
     
     return "".join(prompt_parts)

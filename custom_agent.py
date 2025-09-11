@@ -12,6 +12,7 @@ AGENT_CONFIG = None
 INPUT_TEXT = None
 CHAT_HISTORY = None
 ANTHROPIC_AGENT = None
+TOOL_CALLS_THIS_TURN = []
 
 load_dotenv()
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
@@ -35,7 +36,8 @@ class CustomAnthropicAgent(AnthropicAgent):
         """
         Overrides the base method to inject tool surrogate logic for surrogate tools.
         """
-        global SCENARIO, AGENT_CONFIG, INPUT_TEXT, CHAT_HISTORY, USER_ID, SESSION_ID
+        global SCENARIO, AGENT_CONFIG, INPUT_TEXT, CHAT_HISTORY, USER_ID, SESSION_ID, TOOL_CALLS_THIS_TURN
+        TOOL_CALLS_THIS_TURN = []
         SCENARIO = additional_params.get("scenario")
         AGENT_CONFIG = additional_params.get("agent_config")
         CHAT_HISTORY = chat_history
@@ -54,12 +56,30 @@ class CustomAnthropicAgent(AnthropicAgent):
         #print(f"input_text: {input_text[0:200]}...(truncated)")
 
         result = await super().process_request(input_text, user_id, session_id, chat_history, additional_params)
+        
+        if TOOL_CALLS_THIS_TURN:
+            tool_markers = "".join([f"[TOOL_CALL]{tool_name}[/TOOL_CALL]" for tool_name in TOOL_CALLS_THIS_TURN])
+            if isinstance(result, ConversationMessage):
+                original_text = result.content[0].get('text', '')
+                result.content[0]['text'] = f"{tool_markers}{original_text}"
+            else: # It's an async iterable (streaming)
+                async def stream_wrapper():
+                    yield tool_markers
+                    async for chunk in result:
+                        yield chunk
+                return stream_wrapper()
+
         return result
 
 async def tool_surrogate_func(*args, **kwargs):
     """A surrogate for tools that are defined in the scenario but not yet implemented."""
-    tool_name = kwargs['tool_name']
+    tool_name = kwargs.get('tool_name')
+    if tool_name is None:
+        print(f"WARNING: Tool name (required) was not included in a tool execution request. Arguments passed by LLM: {kwargs}. SKIPPING.")
+        return("Unable to execute unnamed tool. Make sure the 'tool_name' parameter is always provided when requesting tool execution.")
     print(f"--- Tool {tool_name} called with inputs: {kwargs} ---")
+    global TOOL_CALLS_THIS_TURN
+    TOOL_CALLS_THIS_TURN.append(tool_name)
     current_tool_config = None
     for tool_config in AGENT_CONFIG.get('tools', []):
         if tool_config.get('toolName') == tool_name:
@@ -91,6 +111,12 @@ async def tool_surrogate_func(*args, **kwargs):
     # The response from the LLM is a ConversationMessage, e.g., (role="assistant", content=[{"type": "text", "text": "Error: Missing scenario or agent_config"}])
     trimmed_response = strip_fences(response.content[0].get('text', 'Error: No text included in the tool agent response.'))
     print(f"--- Response from surrogate tool (trimmed): {' '.join(trimmed_response[0:100].replace('\n',' ').split())}")
+    
+    # Check if the tool is meant to end the conversation
+    if current_tool_config.get("endsConversation"):
+        print(f"--- Tool {tool_name} is configured to end the conversation. ---")
+        trimmed_response += "\nSTART WRAPPING UP THE CONVERSATION"
+        
     return trimmed_response
 
 # not used

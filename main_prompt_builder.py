@@ -1,53 +1,11 @@
 import json
 
-
-
 def schema_to_string(schema):
     return json.dumps(schema, indent=2)
 
-# def build_tools_catalog(scenario, current_agent):
-#     lines = ["""
-# <AVAILABLE TOOLS>
-# If you want to call a tool, you will return this JSON structure: {"tool_name": string, "args": dict}
-# Here are the available tools:
-# """]
-#     have_tool = False
-#     for tool_config in  current_agent.agent_config.get('tools', []):
-#         have_tool = True
-#         lines.append(f"Tool: {tool_config['toolName']}(args: dict)")
-#         lines.append(f"// {tool_config.get('description', '')}".strip())
-#         schema_str = schema_to_string(tool_config.get('inputSchema'))
-#         lines.append(f"Input Schema for {tool_config['toolName']}:\n{schema_str}")
-#         lines.append('')
-#     lines.append('</AVAILABLE TOOLS>')
-#     if have_tool:
-#         return '\n'.join(lines)
-#     else:
-#         return ''
 
-def finalization_reminder():
-    return """
-<FINALIZATION>
-Your response will be the last message in the conversation.
-Compose ONE final message to the remote agent summarizing the outcome and key reasons.
-IMPORTANT: Include the exact phrase "END OF CONVERSATION" at the conclusion of your response.
-</FINALIZATION>
-"""
-
-
-def build_main_prompt(scenario, agent_config, chat_history, finalization_reminder=None):
+def build_main_prompt(scenario, agent_config):
     other_agents = [a for a in scenario.get('agents', []) if a['agentId'] != agent_config['agentId']]
-
-    # history_str = ""
-    # if chat_history:
-    #     for message in chat_history:
-    #         role = message.role
-    #         content = ""
-    #         if message.content and isinstance(message.content, list) and 'text' in message.content[0]:
-    #             content = message.content[0]['text']
-    #         history_str += f"{role}: {content}\n"
-    # else:
-    #     history_str = "<!-- no conversation history -->"
 
     parts = ['<SCENARIO>']
     md = scenario.get('metadata', {})
@@ -82,33 +40,13 @@ def build_main_prompt(scenario, agent_config, chat_history, finalization_reminde
         info.append("</OTHER PARTY'S ROLE>")
         parts.append('\n'.join(info))
 
-    # The chat history is passed to the LLM separately by the agent framework,
-    # so we don't need to include it in the prompt.
-    # parts.extend(['<CONVERSATION_HISTORY>', history_str, '</CONVERSATION_HISTORY>'])
+    parts.append(f'''
+<ENDING_THE_CONVERSATION>
+If your goal has been achieved and acknowledged by the other party, you may end the conversation by appending "END OF CONVERSATION" to your message. 
+A tool may also signal you to start bringing the conversation to a close by including "START WRAPPING UP THE CONVERSATION" in its output.
+Before ending the conversation, ask if there is anything else the other party needs, or if there are any more questions. Signal "END OF CONVERSATION" only when both parties have no more questions or activities.
+Be polite, and do not cut off abruptly, but at the same time, do not drag the conversation out for no reason.
+</ENDING_THE_CONVERSATION>
+''')
 
-# Do not provide the tools in the prompt - the framework will invoke them.
-    # tools_catalog = build_tools_catalog(scenario, current_agent)
-    # #print("tools_catalog ", tools_catalog)
-    # parts.append(tools_catalog)
-
-    # parts.append("""
-# <TOOLING_GUIDANCE>
-# - First review the conversation history to check for any required information. If found, do not repeat the tool call. 
-# - Call only the necessary tools directly related to the original prompt.
-# - After obtaining the necessary information, answer the original prompt with a message directed at the other party.
-# - Keep all exchanges in this conversation thread; do not refer to portals/emails/fax.",
-# </TOOLING_GUIDANCE>
-    # """)
-
-    if finalization_reminder and finalization_reminder.strip():
-        parts.extend(['', finalization_reminder.strip(), ''])
-
-    # parts.append("""
-# <RESPONSE>
-# You have two response options: request to run a tool to get more information, or compose a response to the other party. In both cases, respond with exactly ONE JSON object:
-# - If you have the information needed to advance the conversation, your response should be a message for other party, in plain text, using a professional tone, and without extraneous commentary. Use the schema: {"action": "send_message", "message": str}
-# - If sending the final response, ending the conversation, conclude your message with the exact phrase "END OF CONVERSATION".
-# - If you need to run a tool to get the information needed to compose a response, respond using the schema: {"action": "toolUse", "tool_name": str, "args": object}
-# </RESPONSE>
-# """)
     return '\n'.join(parts)

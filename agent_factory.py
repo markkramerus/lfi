@@ -38,6 +38,9 @@ def create_agents_from_scenario(file_path: str):
         agent_tools = []
         for tool_config in agent_config.get('tools', []):
             tool_name = tool_config.get('toolName')
+            if tool_name is None:
+                print("WARNING: Tool name ('toolName' property) was not included in a tool configuration. Check the scenario file. Skipping this tool.")
+                continue
             tool_function = LOCALLY_IMPLEMENTED_TOOLS.get(tool_name)
             mcp_server = tool_config.get('mcpServer')
             if tool_function:
@@ -67,7 +70,7 @@ def create_agents_from_scenario(file_path: str):
         tools = AgentTools(agent_tools)
 
         # Create the agent with the enhanced options
-        system_prompt = f"{build_main_prompt(scenario_data, agent_config, [])}\nAdditional instruction: {agent_config.get('systemPrompt')}"
+        system_prompt = build_main_prompt(scenario_data, agent_config)
         agent = CustomAnthropicAgent(AnthropicAgentOptions(
             name=agent_config.get('agentId'),
             description=agent_config.get('situation'),
@@ -76,7 +79,7 @@ def create_agents_from_scenario(file_path: str):
             model_id = 'claude-3-7-sonnet-latest',
             streaming=False,
             custom_system_prompt={"template": system_prompt},
-            tool_config = {'tool': tools, 'toolMaxRecursions': 5}
+            tool_config = {'tool': tools, 'toolMaxRecursions': 10}
         ))
         # Save the entire configuration dictionary
         agent.agent_config = agent_config

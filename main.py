@@ -4,7 +4,11 @@ import sys
 import uuid
 import json
 import logging
+import webbrowser
+import re
+import time
 from dotenv import load_dotenv
+from app import start_flask_app, update_chat_history, update_scenario_info
 from agent_squad.orchestrator import AgentSquad, AgentSquadConfig
 from agent_squad.types import ConversationMessage, ParticipantRole
 from agent_squad.classifiers import ClassifierResult
@@ -14,6 +18,7 @@ from main_prompt_builder import build_main_prompt
 
 # Suppress httpx info logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 # Load environment variables
 load_dotenv()
@@ -22,6 +27,10 @@ MAX_HISTORY = 10000
 
 async def main(args):
     """Main function to demonstrate secure, agent-contained tool use."""
+    start_flask_app()
+    time.sleep(1)  # Give flask time to start
+    webbrowser.open("http://127.0.0.1:5001")
+    
     user_id = "user_123"
     session_id = str(uuid.uuid4())
 
@@ -38,11 +47,21 @@ async def main(args):
         print("No agents were created. Exiting.")
         return
 
+    if scenario_data.get("metadata"):
+        update_scenario_info({
+            "title": scenario_data["metadata"].get("title", "Chat Scenario"),
+            "description": scenario_data["metadata"].get("description", "")
+        })
+
     # 2. Set up the orchestrator
     initiating_agent = next((agent for agent in agents if 'messageToUseWhenInitiatingConversation' in agent.agent_config), None)
     if not initiating_agent:
         print("Could not find an initiating agent in the scenario.")
         return
+    
+    other_agent = next((agent for agent in agents if agent.id != initiating_agent.id), None)
+    initiating_agent_id = initiating_agent.id
+    other_agent_id = other_agent.id if other_agent else "Unknown"
     
     classifier = AgentChooser(initiating_agent_id=initiating_agent.id)
     orchestrator = AgentSquad(
@@ -83,6 +102,42 @@ async def main(args):
         print("***************CHAT HISTORY FROM CONSISTENT POV OF INITIATING AGENT:")
         # Fetch the real chat history from the orchestrator's storage
         chat_history = await orchestrator.storage.fetch_chat(user_id, session_id, initiating_agent.id)
+        
+        # Update UI
+        ui_history = []
+        for message in chat_history:
+            agent_id = initiating_agent_id if message.role == ParticipantRole.ASSISTANT.value else other_agent_id
+            raw_content = ""
+            if message.content and isinstance(message.content, list) and len(message.content) > 0 and message.content[0].get('text'):
+                raw_content = message.content[0]['text']
+            
+            # Strip the agent ID prefix if it exists
+            if raw_content.startswith(f"{initiating_agent_id}: "):
+                raw_content = raw_content.replace(f"{initiating_agent_id}: ", "", 1)
+
+            # Extract tool calls and the clean message content
+            tool_calls = re.findall(r'\[TOOL_CALL\](.*?)\[/TOOL_CALL\]', raw_content)
+            clean_content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', raw_content).strip()
+
+            # Add tool call messages to the history
+            for tool_name in tool_calls:
+                ui_history.append({
+                    'role': message.role,
+                    'agent_id': agent_id,
+                    'type': 'tool',
+                    'content': f"Running tool: {tool_name}"
+                })
+            
+            # Add the clean conversational message to the history
+            if clean_content:
+                ui_history.append({
+                    'role': message.role,
+                    'agent_id': agent_id,
+                    'type': 'message',
+                    'content': clean_content
+                })
+        update_chat_history(ui_history)
+
         index = 1
 
 
@@ -152,8 +207,43 @@ async def main(args):
             conversation_ended = True
             print("\n--- Conversation has ended ---")
 
+    # Perform one final UI update to ensure the last message is displayed
+    chat_history = await orchestrator.storage.fetch_chat(user_id, session_id, initiating_agent.id)
+    ui_history = []
+    for message in chat_history:
+        agent_id = initiating_agent_id if message.role == ParticipantRole.ASSISTANT.value else other_agent_id
+        raw_content = ""
+        if message.content and isinstance(message.content, list) and len(message.content) > 0 and message.content[0].get('text'):
+            raw_content = message.content[0]['text']
+
+        if raw_content.startswith(f"{initiating_agent_id}: "):
+            raw_content = raw_content.replace(f"{initiating_agent_id}: ", "", 1)
+
+        tool_calls = re.findall(r'\[TOOL_CALL\](.*?)\[/TOOL_CALL\]', raw_content)
+        clean_content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', raw_content).strip()
+
+        for tool_name in tool_calls:
+            ui_history.append({
+                'role': message.role,
+                'agent_id': agent_id,
+                'type': 'tool',
+                'content': f"Running tool: {tool_name}"
+            })
+        
+        if clean_content:
+            ui_history.append({
+                'role': message.role,
+                'agent_id': agent_id,
+                'type': 'message',
+                'content': clean_content
+            })
+    update_chat_history(ui_history)
+    
     if not conversation_ended:
         print("\n--- Maximum turns reached, ending conversation ---")
+
+    # Give the UI a moment to fetch the final update before the script exits
+    time.sleep(3)
 
 if __name__ == "__main__":
     asyncio.run(main(sys.argv))
