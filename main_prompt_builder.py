@@ -35,20 +35,19 @@ IMPORTANT: Include the exact phrase "END OF CONVERSATION" at the conclusion of y
 """
 
 
-def build_main_prompt(scenario, current_agent, chat_history, available_files_xml=None, finalization_reminder=None):
-    other_agents = [a for a in scenario.get('agents', []) if a['agentId'] != current_agent.id]
-    agent_config = current_agent.agent_config # entire agent description dictionary from scenario file
+def build_main_prompt(scenario, agent_config, chat_history, finalization_reminder=None):
+    other_agents = [a for a in scenario.get('agents', []) if a['agentId'] != agent_config['agentId']]
 
-    history_str = ""
-    if chat_history:
-        for message in chat_history:
-            role = message.role
-            content = ""
-            if message.content and isinstance(message.content, list) and 'text' in message.content[0]:
-                content = message.content[0]['text']
-            history_str += f"{role}: {content}\n"
-    else:
-        history_str = "<!-- no conversation history -->"
+    # history_str = ""
+    # if chat_history:
+    #     for message in chat_history:
+    #         role = message.role
+    #         content = ""
+    #         if message.content and isinstance(message.content, list) and 'text' in message.content[0]:
+    #             content = message.content[0]['text']
+    #         history_str += f"{role}: {content}\n"
+    # else:
+    #     history_str = "<!-- no conversation history -->"
 
     parts = ['<SCENARIO>']
     md = scenario.get('metadata', {})
@@ -59,7 +58,7 @@ def build_main_prompt(scenario, current_agent, chat_history, available_files_xml
     if md.get('background'):
         parts.append(f"Background: {md['background']}")
     parts.append('</SCENARIO>\n<YOUR_ROLE>')
-    parts.append(f'You are agent "{current_agent.id}" for {agent_config.get('principal', {}).get('name', 'Unknown')}.')
+    parts.append(f'You are agent "{agent_config["agentId"]}" for {agent_config.get("principal", {}).get("name", "Unknown")}.')
     if agent_config.get('principal', {}).get('description'):
         parts.append(f"Principal Info: {agent_config['principal']['description']}")
     if agent_config.get('principal', {}).get('type'):
@@ -83,31 +82,33 @@ def build_main_prompt(scenario, current_agent, chat_history, available_files_xml
         info.append("</OTHER PARTY'S ROLE>")
         parts.append('\n'.join(info))
 
-    parts.extend(['<CONVERSATION_HISTORY>', history_str, '</CONVERSATION_HISTORY>'])
+    # The chat history is passed to the LLM separately by the agent framework,
+    # so we don't need to include it in the prompt.
+    # parts.extend(['<CONVERSATION_HISTORY>', history_str, '</CONVERSATION_HISTORY>'])
 
 # Do not provide the tools in the prompt - the framework will invoke them.
     # tools_catalog = build_tools_catalog(scenario, current_agent)
     # #print("tools_catalog ", tools_catalog)
     # parts.append(tools_catalog)
 
-    parts.append("""
-<TOOLING_GUIDANCE>
-- First review the conversation history to check for any required information. If found, do not repeat the tool call. 
-- Call only the necessary tools directly related to the original prompt.
-- After obtaining the necessary information, answer the original prompt with a message directed at the other party.
-- Keep all exchanges in this conversation thread; do not refer to portals/emails/fax.",
-</TOOLING_GUIDANCE>
-    """)
+    # parts.append("""
+# <TOOLING_GUIDANCE>
+# - First review the conversation history to check for any required information. If found, do not repeat the tool call. 
+# - Call only the necessary tools directly related to the original prompt.
+# - After obtaining the necessary information, answer the original prompt with a message directed at the other party.
+# - Keep all exchanges in this conversation thread; do not refer to portals/emails/fax.",
+# </TOOLING_GUIDANCE>
+    # """)
 
     if finalization_reminder and finalization_reminder.strip():
         parts.extend(['', finalization_reminder.strip(), ''])
 
-    parts.append("""
-<RESPONSE>
-You have two response options: request to run a tool to get more information, or compose a response to the other party. In both cases, respond with exactly ONE JSON object:
-- If you have the information needed to advance the conversation, your response should be a message for other party, in plain text, using a professional tone, and without extraneous commentary. Use the schema: {"action": "send_message", "message": str}
-- If sending the final response, ending the conversation, conclude your message with the exact phrase "END OF CONVERSATION".
-- If you need to run a tool to get the information needed to compose a response, respond using the schema: {"action": "toolUse", "tool_name": str, "args": object}
-</RESPONSE>
-""")
+    # parts.append("""
+# <RESPONSE>
+# You have two response options: request to run a tool to get more information, or compose a response to the other party. In both cases, respond with exactly ONE JSON object:
+# - If you have the information needed to advance the conversation, your response should be a message for other party, in plain text, using a professional tone, and without extraneous commentary. Use the schema: {"action": "send_message", "message": str}
+# - If sending the final response, ending the conversation, conclude your message with the exact phrase "END OF CONVERSATION".
+# - If you need to run a tool to get the information needed to compose a response, respond using the schema: {"action": "toolUse", "tool_name": str, "args": object}
+# </RESPONSE>
+# """)
     return '\n'.join(parts)

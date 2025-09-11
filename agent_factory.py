@@ -6,6 +6,7 @@ from agent_squad.agents import AnthropicAgentOptions
 from agent_squad.utils import AgentTool, AgentTools
 import local_tools as local_tools
 from custom_agent import mcp_tool_func, tool_surrogate_func
+from main_prompt_builder import build_main_prompt
 import inspect
 
 # Load environment variables from .env file
@@ -66,6 +67,7 @@ def create_agents_from_scenario(file_path: str):
         tools = AgentTools(agent_tools)
 
         # Create the agent with the enhanced options
+        system_prompt = f"{build_main_prompt(scenario_data, agent_config, [])}\nAdditional instruction: {agent_config.get('systemPrompt')}"
         agent = CustomAnthropicAgent(AnthropicAgentOptions(
             name=agent_config.get('agentId'),
             description=agent_config.get('situation'),
@@ -73,7 +75,7 @@ def create_agents_from_scenario(file_path: str):
             #model_id='claude-sonnet-4-20250514',  # Default model
             model_id = 'claude-3-7-sonnet-latest',
             streaming=False,
-            custom_system_prompt={"template": agent_config.get('systemPrompt')},
+            custom_system_prompt={"template": system_prompt},
             tool_config = {'tool': tools, 'toolMaxRecursions': 5}
         ))
         # Save the entire configuration dictionary

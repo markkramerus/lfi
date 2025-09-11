@@ -101,7 +101,7 @@ def finalization_reminder(tool_config):
     if tool_config is None:
         print("WARNING: tool_config is None")
         return ""
-    if "true" in tool_config.get("endsConversation","false").lower():
+    if "true" in str(tool_config.get("endsConversation","false")).lower():
         return """
 <FINALIZATION>
 You have invoked a terminal tool that ends the conversation.

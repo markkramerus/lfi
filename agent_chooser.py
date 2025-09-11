@@ -26,26 +26,14 @@ class AgentChooser(Classifier):
                 return agent
         return agent_list[0] # Fallback
 
-    def get_next_agent(self):
+    def advance_turn(self):
         """
-        Determines the next agent to speak.
+        Advances the turn to the next agent.
         """
-        #print("\n--- DEBUG: AgentChooser.get_next_agent ---")
-        agent_list = list(self.agents.values())
-        #print(f"agent_list: {agent_list}")
-        if len(agent_list) != 2:
-            print("--- DEBUG: Not a two-agent scenario ---")
-            return agent_list[0] if agent_list else None
-
-        # Select the agent that is not the last one.
-        for agent in agent_list:
-            if agent.id != self.last_agent_id:
-                selected_agent = agent
-                break
-        
-        self.last_agent_id = selected_agent.id
-        #print(f"--- Agent receiving message: {selected_agent.id} ---")
-        return selected_agent
+        next_agent = self.peek_next_agent()
+        if next_agent:
+            self.last_agent_id = next_agent.id
+        return next_agent
 
     async def process_request(
         self,
@@ -53,8 +41,8 @@ class AgentChooser(Classifier):
         chat_history: List[ConversationMessage]
     ) -> ClassifierResult:
         """
-        Selects the next agent based on the conversation history.
+        This method is required by the abstract base class, but our implementation
+        bypasses it. It will not be called.
         """
-        selected_agent = self.get_next_agent()
-        #print(f"\n--- DEBUG: At 2: Selected agent: {selected_agent.id}")
-        return ClassifierResult(selected_agent=selected_agent, confidence=1.0)
+        # This logic will not be executed.
+        return ClassifierResult(selected_agent=self.peek_next_agent(), confidence=1.0)
