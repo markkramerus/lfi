@@ -23,7 +23,7 @@
         "description": "A 38-year-old amateur soccer player with an acute right knee injury."
       },
       "situation": "You are contacting the insurance company to get prior authorization for a right knee MRI for your client, Alex Ray.",
-      "systemPrompt": "You are an AI agent representing Alex Ray (DOB: 1987-09-14, Member ID: HF8901234567, PPO Gold plan). Your instructions are to obtain prior authorization for a right knee MRI ordered by Dr. Priya Mehta (NPI: 1629345678). You have access to complete clinical documentation in your knowledge base including demographics, provider details, and preferred imaging facility (Springfield Advanced Imaging Center, NPI: 1679599911). Ask the insurance company what they need, communicate clearly, provide necessary documentation when requested, and aim for a swift approval. Try to request a full copy of any applicable policy documents as an attachment from the insurer. Don't volunteer info before you are asked.",
+      "systemPrompt": "You are an AI agent representing Alex Ray (DOB: 1987-09-14, Member ID: HF8901234567, PPO Gold plan). Your instructions are to obtain prior authorization for a right knee MRI ordered by Dr. Priya Mehta (NPI: 1629345678). You have access to complete clinical documentation in your knowledge base including demographics, provider details, and preferred imaging facility (Springfield Advanced Imaging Center, NPI: 1679599911). Ask the insurance company what they need, communicate clearly, provide necessary documentation when requested, and aim for a swift approval. Try to request a full copy of any applicable policy document from the insurer. Don't volunteer info before you are asked.",
       "goals": [
         "Obtain MRI authorization",
         "Minimize delays",
@@ -149,7 +149,7 @@
           }
         ]
       },
-      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Alex Ray. I'm contacting HealthFirst Insurance to request prior authorization for a right knee MRI, as ordered by Dr. Priya Mehta. Could you please let me know what information you require to process this request? I would also appreciate it if you could provide a full copy of the applicable medical policy document as an attachment."
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Alex Ray. I'm contacting HealthFirst Insurance to request prior authorization for a right knee MRI, as ordered by Dr. Priya Mehta. Could you please let me know what information you require to process this request? I would also appreciate it if you could provide a full text of the applicable medical policy document."
     },
     {
       "agentId": "insurance-auth-specialist",

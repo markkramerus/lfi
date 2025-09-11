@@ -10,7 +10,7 @@ from typing import List, Dict, Optional, Union, AsyncIterable
 SCENARIO = None
 AGENT_CONFIG = None
 INPUT_TEXT = None
-CONV_HISTORY = None
+CHAT_HISTORY = None
 ANTHROPIC_AGENT = None
 
 load_dotenv()
@@ -35,10 +35,9 @@ class CustomAnthropicAgent(AnthropicAgent):
         """
         Overrides the base method to inject tool surrogate logic for surrogate tools.
         """
-        global SCENARIO, AGENT_CONFIG, INPUT_TEXT, CHAT_HISTORY, CONV_HISTORY, USER_ID, SESSION_ID
+        global SCENARIO, AGENT_CONFIG, INPUT_TEXT, CHAT_HISTORY, USER_ID, SESSION_ID
         SCENARIO = additional_params.get("scenario")
         AGENT_CONFIG = additional_params.get("agent_config")
-        CONV_HISTORY = additional_params.get("conversation_history")
         CHAT_HISTORY = chat_history
         INPUT_TEXT = input_text
         USER_ID = user_id
@@ -48,7 +47,10 @@ class CustomAnthropicAgent(AnthropicAgent):
             print("--- DEBUG: Missing scenario or agent_config ---")
             return ConversationMessage(role="assistant", content=[{"type": "text", "text": "Error: Missing scenario or agent_config"}])
 
-        #print("\n--- CustomAnthropicAgent.process_request ---")
+        #print(f"\n--- CustomAnthropicAgent.process_request ---")
+        #print("Chat history received:")
+        #for message in chat_history:
+        #    print(f"  - Role: {message.role}, Content: {message.content}")
         #print(f"input_text: {input_text[0:200]}...(truncated)")
 
         result = await super().process_request(input_text, user_id, session_id, chat_history, additional_params)
@@ -56,8 +58,8 @@ class CustomAnthropicAgent(AnthropicAgent):
 
 async def tool_surrogate_func(*args, **kwargs):
     """A surrogate for tools that are defined in the scenario but not yet implemented."""
-    print(f"--- Surrogate called with args: {args}, kwargs: {kwargs} ---")
     tool_name = kwargs['tool_name']
+    print(f"--- Tool {tool_name} called with inputs: {kwargs} ---")
     current_tool_config = None
     for tool_config in AGENT_CONFIG.get('tools', []):
         if tool_config.get('toolName') == tool_name:
@@ -73,7 +75,7 @@ async def tool_surrogate_func(*args, **kwargs):
         tool_name = tool_name,
         tool_config = current_tool_config,
         args=kwargs,
-        conv_history=CONV_HISTORY,
+        chat_history=CHAT_HISTORY,
     )
     #print(f"--- DEBUG: created surrogate prompt", type(prompt))
     # Call the LLM with the prompt using a very simple agent that has no tools, no customization
@@ -88,7 +90,7 @@ async def tool_surrogate_func(*args, **kwargs):
     response = await SimpleAgent.process_request(prompt, USER_ID, SESSION_ID, [])
     # The response from the LLM is a ConversationMessage, e.g., (role="assistant", content=[{"type": "text", "text": "Error: Missing scenario or agent_config"}])
     trimmed_response = strip_fences(response.content[0].get('text', 'Error: No text included in the tool agent response.'))
-    print(f"--- DEBUG: Response from surrogate tool: {trimmed_response[0:100]}")
+    print(f"--- Response from surrogate tool (trimmed): {' '.join(trimmed_response[0:100].replace('\n',' ').split())}")
     return trimmed_response
 
 # not used

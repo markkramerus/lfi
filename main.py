@@ -5,6 +5,7 @@ import uuid
 import ast
 from dotenv import load_dotenv
 from agent_squad.orchestrator import AgentSquad, AgentSquadConfig
+from agent_squad.types import ConversationMessage, ParticipantRole
 from agent_chooser import AgentChooser
 from agent_factory import create_agents_from_scenario
 from main_prompt_builder import build_main_prompt
@@ -52,32 +53,45 @@ async def main(args):
     # 3. Main conversational loop
     
     next_request = initiating_agent.agent_config['messageToUseWhenInitiatingConversation']
+    
+    # Manually save the initiating message to the chat history
+    await orchestrator.storage.save_chat_message(
+        user_id,
+        session_id,
+        initiating_agent.id,
+        ConversationMessage(
+            role=ParticipantRole.USER.value,
+            content=[{'text': next_request}]
+        )
+    )
+
     call_tool = False
     max_turns = 10
     turn_count = 0
-    conversation_history = ""
     conversation_ended = False
 
     while not conversation_ended and turn_count < max_turns:
         turn_count += 1
         print(f"\n======= Turn {turn_count} =======")
         current_agent = classifier.peek_next_agent()
-        conversation_history += f"\nOn turn {turn_count}, {current_agent.name} said: {next_request}."
-        if len(conversation_history) > MAX_HISTORY:
-            conversation_history = f"(truncated)...{conversation_history[-MAX_HISTORY:]}"
-        next_prompt = build_main_prompt(scenario_data, current_agent, conversation_history)
+        print(f"--- Agent receiving message: {current_agent.id} ---")
+        
+        # Fetch the real chat history from the orchestrator's storage
+        chat_history = await orchestrator.storage.fetch_chat(user_id, session_id, current_agent.id)
+        next_prompt = build_main_prompt(scenario_data, current_agent, chat_history)
 
         # print(f"\n--- Prompt text: ---")
         # print(next_prompt)
 
-        response = await orchestrator.route_request(
-            next_prompt, 
-            user_id, 
+        classifier_result = await orchestrator.classify_request(next_prompt, user_id, session_id)
+        response = await orchestrator.agent_process_request(
+            next_prompt,
+            user_id,
             session_id,
+            classifier_result,
             additional_params={
                 "scenario": orchestrator.scenario_data,
-                "agent_config": current_agent.agent_config,
-                "conversation_history": conversation_history
+                "agent_config": current_agent.agent_config
             }
         )
 

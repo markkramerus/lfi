@@ -35,9 +35,20 @@ IMPORTANT: Include the exact phrase "END OF CONVERSATION" at the conclusion of y
 """
 
 
-def build_main_prompt(scenario, current_agent, conversation_history, available_files_xml=None, finalization_reminder=None):
+def build_main_prompt(scenario, current_agent, chat_history, available_files_xml=None, finalization_reminder=None):
     other_agents = [a for a in scenario.get('agents', []) if a['agentId'] != current_agent.id]
     agent_config = current_agent.agent_config # entire agent description dictionary from scenario file
+
+    history_str = ""
+    if chat_history:
+        for message in chat_history:
+            role = message.role
+            content = ""
+            if message.content and isinstance(message.content, list) and 'text' in message.content[0]:
+                content = message.content[0]['text']
+            history_str += f"{role}: {content}\n"
+    else:
+        history_str = "<!-- no conversation history -->"
 
     parts = ['<SCENARIO>']
     md = scenario.get('metadata', {})
@@ -72,7 +83,7 @@ def build_main_prompt(scenario, current_agent, conversation_history, available_f
         info.append("</OTHER PARTY'S ROLE>")
         parts.append('\n'.join(info))
 
-    parts.extend(['<CONVERSATION_HISTORY>', conversation_history or '<!-- no conversation history -->', '</CONVERSATION_HISTORY>'])
+    parts.extend(['<CONVERSATION_HISTORY>', history_str, '</CONVERSATION_HISTORY>'])
 
 # Do not provide the tools in the prompt - the framework will invoke them.
     # tools_catalog = build_tools_catalog(scenario, current_agent)

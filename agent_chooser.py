@@ -44,7 +44,7 @@ class AgentChooser(Classifier):
                 break
         
         self.last_agent_id = selected_agent.id
-        print(f"--- Agent receiving message: {selected_agent.id} ---")
+        #print(f"--- Agent receiving message: {selected_agent.id} ---")
         return selected_agent
 
     async def process_request(
