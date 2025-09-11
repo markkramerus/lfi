@@ -15,7 +15,7 @@ agent_tool = AgentTool(
     description="Search EHR for patient's clinical notes...",
     properties={ "dateRange": { "type": "string" }, ... },
     required=["searchTerms"],
-    func=placeholder_tool_func  # The actual Python function to run
+    func=tool_surrogate_func  # The actual Python function to run
 )
 ```
 

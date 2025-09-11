@@ -1,36 +1,99 @@
-from agent_squad.agents import AnthropicAgent
-from prompt_builder import finalization_reminder
+import json
+import os
+import re
+from dotenv import load_dotenv
+from agent_squad.agents import AnthropicAgent, AnthropicAgentOptions
+from tool_surrogate_prompt_builder import build_tool_surrogate_prompt
+from agent_squad.types import ConversationMessage
+from typing import List, Dict, Optional, Union, AsyncIterable
+
+SCENARIO = None
+AGENT_CONFIG = None
+INPUT_TEXT = None
+CONV_HISTORY = None
+ANTHROPIC_AGENT = None
+
+load_dotenv()
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+
+def strip_fences(text):
+    return (match.group(1).strip() if (match := re.search(r'```(?:\w+)?\s*(.*?)\s*```', text, re.DOTALL)) else text)
 
 class CustomAnthropicAgent(AnthropicAgent):
     """
-    A custom Anthropic agent that injects a finalization reminder
-    into the prompt when a terminal tool has been used.
+    The custom Anthropic agent uses an tool surrogate to generate
+    realistic tool outputs for surrogate tools.
     """
-    async def _process_tool_result(self, tool_name, tool_result, original_messages):
+    async def process_request(
+        self,
+        input_text: str,
+        user_id: str,
+        session_id: str,
+        chat_history: List[ConversationMessage],
+        additional_params: Optional[Dict[str, str]] = None
+    ) -> Union[ConversationMessage, AsyncIterable[any]]:
         """
-        Overrides the base method to add a finalization reminder to the prompt.
+        Overrides the base method to inject tool surrogate logic for surrogate tools.
         """
-        messages = original_messages.copy()
-        
-        # Find the tool definition to check if it's a terminal tool
-        tool = self.tool_config.tool.get_tool(tool_name)
-        if tool and tool.ends_conversation:
-            # This is a terminal tool, so inject the finalization reminder.
-            # The reminder is added to the last user message.
-            # I am making an assumption here that the last message is the one
-            # that contains the tool result.
-            last_message = messages[-1]
-            if last_message['role'] == 'user':
-                # It's common for the tool result to be part of a user message
-                # in the conversation history.
-                if isinstance(last_message['content'], list):
-                    # Find the tool result content block and append the reminder
-                    for content_block in last_message['content']:
-                        if content_block.get('type') == 'tool_result':
-                            content_block['content'] += finalization_reminder()
-                            break
-                else:
-                    # If it's just a string, append the reminder
-                    last_message['content'] += finalization_reminder()
+        global SCENARIO, AGENT_CONFIG, INPUT_TEXT, CHAT_HISTORY, CONV_HISTORY, USER_ID, SESSION_ID
+        SCENARIO = additional_params.get("scenario")
+        AGENT_CONFIG = additional_params.get("agent_config")
+        CONV_HISTORY = additional_params.get("conversation_history")
+        CHAT_HISTORY = chat_history
+        INPUT_TEXT = input_text
+        USER_ID = user_id
+        SESSION_ID = session_id
 
-        return await super()._process_tool_result(tool_name, tool_result, messages)
+        if not SCENARIO or not AGENT_CONFIG:
+            print("--- DEBUG: Missing scenario or agent_config ---")
+            return ConversationMessage(role="assistant", content=[{"type": "text", "text": "Error: Missing scenario or agent_config"}])
+
+        #print("\n--- CustomAnthropicAgent.process_request ---")
+        #print(f"input_text: {input_text[0:200]}...(truncated)")
+
+        result = await super().process_request(input_text, user_id, session_id, chat_history, additional_params)
+        return result
+
+async def tool_surrogate_func(*args, **kwargs):
+    """A surrogate for tools that are defined in the scenario but not yet implemented."""
+    print(f"--- Surrogate called with args: {args}, kwargs: {kwargs} ---")
+    tool_name = kwargs['tool_name']
+    current_tool_config = None
+    for tool_config in AGENT_CONFIG.get('tools', []):
+        if tool_config.get('toolName') == tool_name:
+            current_tool_config = tool_config
+            break
+    if not current_tool_config:
+        print(f"--- DEBUG: Cannot find tool config for {tool_name} ---")
+        return "Tool failed to execute."
+
+    prompt = build_tool_surrogate_prompt(
+        scenario=SCENARIO,
+        agent_config=AGENT_CONFIG,
+        tool_name = tool_name,
+        tool_config = current_tool_config,
+        args=kwargs,
+        conv_history=CONV_HISTORY,
+    )
+    #print(f"--- DEBUG: created surrogate prompt", type(prompt))
+    # Call the LLM with the prompt using a very simple agent that has no tools, no customization
+    SimpleAgent= AnthropicAgent(AnthropicAgentOptions(
+        name='Anthropic Assistant',
+        description='A simple AI assistant',
+        api_key=ANTHROPIC_API_KEY,
+        model_id = 'claude-3-7-sonnet-latest',
+        streaming=False
+    ))
+
+    response = await SimpleAgent.process_request(prompt, USER_ID, SESSION_ID, [])
+    # The response from the LLM is a ConversationMessage, e.g., (role="assistant", content=[{"type": "text", "text": "Error: Missing scenario or agent_config"}])
+    trimmed_response = strip_fences(response.content[0].get('text', 'Error: No text included in the tool agent response.'))
+    print(f"--- DEBUG: Response from surrogate tool: {trimmed_response[0:100]}")
+    return trimmed_response
+
+# not used
+def mcp_tool_func(*args, **kwargs):
+    """A placeholder for MCP tool calls."""
+    print(f"--- MCP tool called with args: {args}, kwargs: {kwargs} ---")
+    # In a real implementation, this would trigger an MCP call
+    return "MCP tool function not implemented."

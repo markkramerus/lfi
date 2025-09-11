@@ -293,7 +293,7 @@ export const ScenarioPlannerV03: Planner<ScenarioPlannerConfig> = {
         for (const f of facts as any[]) { if (f?.type === 'attachment_added' && f.name) s.add(String(f.name)); }
         return Array.from(s);
       })();
-      const exec = await runToolOracle({ tool: tdef, args: decision.args || {}, scenario, myAgentId: myId, conversationHistory: xmlHistory, leadingThought: reasoning, llm: ctx.llm, model, existingNames: existingNamesAtCallStart });
+      const exec = await runToolSurrogate({ tool: tdef, args: decision.args || {}, scenario, myAgentId: myId, conversationHistory: xmlHistory, leadingThought: reasoning, llm: ctx.llm, model, existingNames: existingNamesAtCallStart });
       if (!exec.ok) {
         const emsg = String(exec.error || 'Tool failed');
         out.push(({ type:'tool_result', callId, ok:false, error: emsg, ...(includeWhy ? { why:'Tool execution error.' } : {}) } as ProposedFact));
@@ -301,7 +301,7 @@ export const ScenarioPlannerV03: Planner<ScenarioPlannerConfig> = {
         out.push(({ type:'compose_intent', composeId: ctx.newId('c:'), text:'We encountered an error while running a tool. Please respond so we can continue.', nextStateHint:'working' } as ProposedFact));
         break;
       }
-      // Stamp the oracle's reasoning onto the tool_result so downstream UI and HUD can reflect it
+      // Stamp the surrogate's reasoning onto the tool_result so downstream UI and HUD can reflect it
       out.push(({ type:'tool_result', callId, ok:true, result: exec.result ?? null, ...(includeWhy ? { why: exec.reasoning || 'Tool execution succeeded.' } : {}) } as ProposedFact));
       // Filter duplicate attachments by name to keep the journal clean
       const existingNames = new Set<string>();
@@ -843,10 +843,10 @@ function schemaToTs(schema: any, indent = 0): string {
 }
 
 // -----------------------------
-// Tool Oracle (LLM-synth) – minimal, deterministic envelope
+// Tool Tool surrogate (LLM-synth) – minimal, deterministic envelope
 // -----------------------------
 
-type OracleExec = {
+type SurrogateExec = {
   ok: boolean;
   error?: string;
   result?: unknown;
@@ -854,7 +854,7 @@ type OracleExec = {
   reasoning?: string;
 };
 
-async function runToolOracle(opts: {
+async function runToolSurrogate(opts: {
   tool: ScenarioTool;
   args: Record<string, unknown>;
   scenario: ScenarioConfiguration;
@@ -864,20 +864,20 @@ async function runToolOracle(opts: {
   llm: PlanContext['llm'];
   model?: string;
   existingNames?: ReadonlyArray<string>;
-}): Promise<OracleExec> {
-  const prompt = buildOraclePromptAligned(opts);
+}): Promise<SurrogateExec> {
+  const prompt = buildSurrogatePromptAligned(opts);
   try {
     const req = { model: opts.model, messages: [{ role: 'user', content: prompt }], temperature: 0.6 } as const;
-    const parsed = await chatWithValidationRetry(opts.llm, req as any, (text) => parseOracleResponseAligned(text), { attempts: 3 });
+    const parsed = await chatWithValidationRetry(opts.llm, req as any, (text) => parseSurrogateResponseAligned(text), { attempts: 3 });
     const { output, reasoning } = parsed;
     const { attachments, result } = await extractAttachmentsFromOutput(output, opts.tool.toolName, opts.args, new Set(opts.existingNames || []));
     return { ok: true, result, attachments, reasoning };
   } catch (e:any) {
-    return { ok: false, error: String(e?.message || 'oracle failed'), attachments: [] };
+    return { ok: false, error: String(e?.message || 'tool surrogate failed'), attachments: [] };
   }
 }
 
-function buildOraclePromptAligned(opts: {
+function buildSurrogatePromptAligned(opts: {
   tool: ScenarioTool;
   args: Record<string, unknown>;
   scenario: ScenarioConfiguration;
@@ -942,7 +942,7 @@ function buildOraclePromptAligned(opts: {
     'Rules:',
     '- Exactly one of contentString or contentJson must be present per document (never both).',
     '- Use contentJson only when contentType is application/json. For all other allowed types, use contentString.',
-    '- Do NOT claim to produce binary formats (e.g., PDF, images, Word/Excel); this Oracle outputs text-only artifacts.',
+    '- Do NOT claim to produce binary formats (e.g., PDF, images, Word/Excel); this Tool surrogate outputs text-only artifacts.',
     '- If a binary-like artifact is implied, instead provide a faithful text/markdown or JSON representation.',
     'Return multiple documents by including multiple entries in output.documents in the desired order.',
     '',
@@ -991,7 +991,7 @@ function buildOraclePromptAligned(opts: {
 
   const lines: string[] = [];
   lines.push('<SYSTEM_ROLE>');
-  lines.push('You are an omniscient Oracle / World Simulator for a scenario-driven, multi-agent conversation.');
+  lines.push('You are an omniscient Tool surrogate / World Simulator for a scenario-driven, multi-agent conversation.');
   lines.push('Your role: execute a tool call with realistic, in-character results.');
   lines.push('</SYSTEM_ROLE>');
   lines.push('');
@@ -1083,7 +1083,7 @@ function formatScenarioKnowledgeAligned(s: ScenarioConfiguration): string {
   const documents = Array.isArray(k.documents) && k.documents.length ? k.documents.map((d: any) => `  - [${d.id}] ${d.title} (${d.type})`).join('\n') : '  (none)';
   const refs = Array.isArray(k.references) && k.references.length ? k.references.map((r: any) => `  - ${r.title}: ${r.url}`).join('\n') : '  (none)';
   return [
-    'SCENARIO KNOWLEDGE (shared ground-truth available to the Oracle):',
+    'SCENARIO KNOWLEDGE (shared ground-truth available to the Surrogate):',
     'Facts:',
     facts,
     'Documents (IDs usable for synthesized refs):',
@@ -1107,7 +1107,7 @@ function formatAgentProfileAligned(a: any): string {
   ].join('\n');
 }
 
-export function parseOracleResponseAligned(content: string): { reasoning: string; output: unknown } {
+export function parseSurrogateResponseAligned(content: string): { reasoning: string; output: unknown } {
   const parseWithRescue = (s: string): any => {
     const obj = tryParseJson(s);
     if (obj !== null) return obj;
@@ -1138,7 +1138,7 @@ export function parseOracleResponseAligned(content: string): { reasoning: string
     if (obj && typeof obj.reasoning === 'string' && 'output' in obj) return { reasoning: obj.reasoning, output: (obj as any).output };
     throw new Error('Bare JSON missing required keys { reasoning, output }');
   }
-  throw new Error('No JSON object found in Oracle response');
+  throw new Error('No JSON object found in Tool surrogate response');
 }
 
 function tryParseJson(s: string): any | null { try { return JSON.parse(s); } catch { return null; } }
@@ -1418,7 +1418,7 @@ function parseJsonObject(text: string): any {
 // Compose text generation
 // -----------------------------
 
-function finalComposeFromTerminal(exec: OracleExec, tool: ScenarioTool, scenario: ScenarioConfiguration, myId: string): string {
+function finalComposeFromTerminal(exec: SurrogateExec, tool: ScenarioTool, scenario: ScenarioConfiguration, myId: string): string {
   const outcome = tool.conversationEndStatus || 'neutral';
   const me = scenario.agents.find(a => a.agentId === myId);
   const who = me?.principal?.name ? `on behalf of ${me.principal.name}` : 'on behalf of our principal';
@@ -1437,7 +1437,7 @@ function finalComposeFromTerminal(exec: OracleExec, tool: ScenarioTool, scenario
   return `${base}\nOutcome: Information provided.\n${suffix}${files}`;
 }
 
-function draftComposeFromTool(exec: OracleExec, tool: ScenarioTool, scenario: ScenarioConfiguration, myId: string):
+function draftComposeFromTool(exec: SurrogateExec, tool: ScenarioTool, scenario: ScenarioConfiguration, myId: string):
   | { text: string; attachments?: AttachmentMeta[] }
   | null {
   // Simple heuristic: if tool produced docs but isn't terminal, suggest a draft attaching them.

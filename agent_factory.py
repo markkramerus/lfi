@@ -4,20 +4,18 @@ from dotenv import load_dotenv
 from custom_agent import CustomAnthropicAgent
 from agent_squad.agents import AnthropicAgentOptions
 from agent_squad.utils import AgentTool, AgentTools
-import tools as tool_functions
+import local_tools as local_tools
+from custom_agent import mcp_tool_func, tool_surrogate_func
 import inspect
 
 # Load environment variables from .env file
 load_dotenv()
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
-# Dynamically build the tool function map from the tools.py module
-TOOL_FUNCTION_MAP = {name: func for name, func in inspect.getmembers(tool_functions, inspect.isfunction)}
+# Get a list of tools implemented in the tools.py file
+LOCALLY_IMPLEMENTED_TOOLS = {name: func for name, func in inspect.getmembers(local_tools, inspect.isfunction)}
 
-def placeholder_tool_func(*args, **kwargs):
-    """A placeholder for tools that are defined in the scenario but not yet implemented."""
-    print(f"--- Placeholder tool called with args: {args}, kwargs: {kwargs} ---")
-    return "Tool function not implemented."
+
 
 def create_agents_from_scenario(file_path: str):
     """
@@ -34,18 +32,34 @@ def create_agents_from_scenario(file_path: str):
 
     agents = []
     for agent_config in scenario_data.get('agents', []):
+
         # Create tools for the agent
         agent_tools = []
         for tool_config in agent_config.get('tools', []):
-            input_schema = tool_config.get('inputSchema', {})
             tool_name = tool_config.get('toolName')
-            # Look up the real function, or use the placeholder if not found
-            tool_function = TOOL_FUNCTION_MAP.get(tool_name, placeholder_tool_func)
+            tool_function = LOCALLY_IMPLEMENTED_TOOLS.get(tool_name)
+            mcp_server = tool_config.get('mcpServer')
+            if tool_function:
+                # Locally implemented tool
+                pass
+            elif mcp_server:
+                # MCP tool
+                tool_function = mcp_tool_func
+            else:
+                # Surrogate for an unimplemented tool
+                tool_function = tool_surrogate_func
+
+            # make sure the tool name is passed to the tool surrogate function
+            properties=tool_config.get('inputSchema', {}).get('properties', {})
+            properties['tool_name'] = {'type': 'string', 'enum': [tool_name]}
+            required=tool_config.get('inputSchema', {}).get('required', [])
+            required = required.append('tool_name')
+            
             agent_tool = AgentTool(
                 name=tool_name,
                 description=tool_config.get('description'),
-                properties=input_schema.get('properties', {}),
-                required=input_schema.get('required', []),
+                properties=properties,
+                required=required,
                 func=tool_function
             )
             agent_tools.append(agent_tool)
@@ -56,13 +70,14 @@ def create_agents_from_scenario(file_path: str):
             name=agent_config.get('agentId'),
             description=agent_config.get('situation'),
             api_key=ANTHROPIC_API_KEY,
-            model_id='claude-sonnet-4-20250514',  # Default model
+            #model_id='claude-sonnet-4-20250514',  # Default model
+            model_id = 'claude-3-7-sonnet-latest',
             streaming=False,
             custom_system_prompt={"template": agent_config.get('systemPrompt')},
-            #tool_config=AgentTools(tools=agent_tools) if agent_tools else None
             tool_config = {'tool': tools, 'toolMaxRecursions': 5}
         ))
+        # Save the entire configuration dictionary
         agent.agent_config = agent_config
         agents.append(agent)
 
-    return agents
+    return scenario_data, agents
