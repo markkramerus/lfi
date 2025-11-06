@@ -1,0 +1,370 @@
+{
+  "metadata": {
+    "id": "crd_head_ct_prior_auth",
+    "title": "CRD Prior Authorization for Head CT Imaging",
+    "tags": ["davinci", "crd", "prior-authorization", "imaging", "fhir", "cds-hooks"],
+    "description": "Healthcare provider discovers payer coverage requirements for head CT imaging through real-time CRD service, including prior authorization and documentation requirements.",
+    "background": "This scenario demonstrates the Da Vinci Coverage Requirements Discovery workflow where a provider's EHR system queries a payer's CRD service during diagnostic imaging order entry to discover coverage requirements, prior authorization needs, and required documentation.",
+    "challenges": [
+      "Real-time coverage requirements discovery during clinical workflow",
+      "Integration of CDS Hooks with EHR order entry systems",
+      "Balancing patient privacy with need for clinical information",
+      "Streamlining prior authorization workflow to reduce provider burden",
+      "Ensuring accurate and up-to-date coverage policy information"
+    ]
+  },
+  "agents": [
+    {
+      "agentId": "provider",
+      "principal": {
+        "type": "individual",
+        "name": "Dr. Sarah Good, MD",
+        "description": "Primary care physician at Regional Medical Associates, treating patients with various acute and chronic conditions"
+      },
+      "situation": "Currently seeing Mrs. Jones, a 35-year-old female with new onset severe headaches occurring daily for 2 weeks. Physical and neurologic exam normal, but concerned about intracranial process requiring imaging workup.",
+      "systemPrompt": "You are an agent representing Dr. Sarah Good, a primary care physician at Regional Medical Associates. You are currently managing the case of Mrs. Jones (DOB: 1989-02-15, MRN: MRN-78534) who presents with concerning new onset headaches. You need to order a head CT to rule out intracranial masses, but first need to understand any coverage requirements from her insurance plan. Your approach should be: 1. Introduce yourself and the clinical scenario briefly 2. Confirm what coverage information and documentation the payer needs 3. Use your tools to gather relevant clinical information as requested 4. Work collaboratively to understand prior authorization requirements 5. Obtain any necessary approvals or guidance for the imaging study. Be professional, clinical, and focused on ensuring appropriate patient care while meeting insurance requirements. Use tools to retrieve specific patient information rather than providing detailed clinical narratives upfront.",
+      "goals": [
+        "Obtain coverage information for head CT imaging order",
+        "Understand prior authorization requirements if any",
+        "Identify required clinical documentation",
+        "Ensure timely approval for medically necessary imaging"
+      ],
+      "tools": [
+        {
+          "toolName": "search_patient_ehr",
+          "description": "Search the Electronic Health Record system for patient clinical information using natural language queries",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Natural language search query (e.g., 'headache history for patient MRN-78534', 'vital signs and physical exam findings')"
+              },
+              "patientMrn": {
+                "type": "string",
+                "description": "Patient Medical Record Number if not included in query"
+              }
+            },
+            "required": ["query"]
+          },
+          "synthesisGuidance": "Search the knowledgeBase.clinicalRecords and return relevant findings in professional medical language as a structured clinical note with dates, assessments, and relevant negative findings."
+        },
+        {
+          "toolName": "lookup_imaging_protocols",
+          "description": "Look up standard imaging protocols and clinical decision criteria for diagnostic studies",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "imagingType": {
+                "type": "string", 
+                "description": "Type of imaging study (e.g., 'head CT', 'brain MRI', 'chest X-ray')"
+              },
+              "clinicalIndication": {
+                "type": "string",
+                "description": "Clinical reason for imaging (e.g., 'new onset headache', 'rule out mass')"
+              }
+            },
+            "required": ["imagingType", "clinicalIndication"]
+          },
+          "synthesisGuidance": "Retrieve from knowledgeBase.imagingProtocols the appropriate clinical criteria, CPT codes, and standard documentation requirements for the requested study."
+        },
+        {
+          "toolName": "check_previous_authorizations",
+          "description": "Check for any previous prior authorization requests or approvals for this patient",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "patientMrn": {
+                "type": "string",
+                "description": "Patient Medical Record Number"
+              },
+              "serviceType": {
+                "type": "string",
+                "description": "Type of service to check (e.g., 'imaging', 'procedures', 'referrals')"
+              }
+            },
+            "required": ["patientMrn"]
+          },
+          "synthesisGuidance": "Search knowledgeBase.priorAuthorizations and return any previous authorization history with dates, services, and approval status."
+        }
+      ],
+      "knowledgeBase": {
+        "clinicalRecords": [
+          {
+            "date": "2024-09-13",
+            "time": "10:30 AM",
+            "type": "office_visit",
+            "chiefComplaint": "New onset headaches",
+            "hpi": "35-year-old female reports severe headaches beginning abruptly 2 weeks ago. Headaches are severe (8/10), bilateral, last several hours, occurring with increasing frequency now daily. No aura, nausea/vomiting, or vision changes. No recent trauma or illness. Previously healthy with rare headaches.",
+            "physicalExam": {
+              "vitals": "BP 118/72, HR 76, Temp 98.6F, RR 16, O2Sat 99%",
+              "general": "Well-appearing female in no acute distress",
+              "heent": "Normocephalic, atraumatic, PERRL, EOMI, no papilledema on fundoscopy",
+              "neurologic": "Alert and oriented x3, cranial nerves II-XII intact, strength 5/5 all extremities, reflexes 2+ and symmetric, negative Romberg, gait normal",
+              "neck": "Supple, no meningismus, no lymphadenopathy"
+            },
+            "assessment": "New onset severe headaches in previously healthy adult, concerning pattern requiring workup to rule out secondary causes including intracranial mass lesion",
+            "plan": "Head CT without contrast to evaluate for masses, hemorrhage, or other structural abnormalities"
+          },
+          {
+            "date": "2024-09-01",
+            "type": "annual_physical",
+            "notes": "Routine annual exam, no concerns, normal physical exam, up to date on preventive care"
+          }
+        ],
+        "imagingProtocols": {
+          "head_ct_without_contrast": {
+            "cptCode": "70450",
+            "clinicalIndications": ["acute headache", "rule out mass", "rule out hemorrhage", "neurologic deficit"],
+            "documentation": "Clinical history, physical exam findings, indication for study",
+            "urgency": "routine unless red flags present"
+          }
+        },
+        "priorAuthorizations": [],
+        "patient": {
+          "mrn": "MRN-78534",
+          "name": "Mrs. Jennifer Jones",
+          "dob": "1989-02-15",
+          "age": 35,
+          "insurance": "Acme Health Plan - PPO Gold",
+          "memberId": "AHP-445789"
+        }
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Dr. Sarah Good from Regional Medical Associates. I'm reaching out regarding coverage requirements for a head CT scan for our mutual patient, Mrs. Jennifer Jones (DOB: 02/15/1989, Member ID: AHP-445789). She has concerning new onset severe headaches and we need to rule out intracranial pathology. Could you please confirm what clinical information and documentation you need to evaluate coverage for CPT 70450, and whether prior authorization is required? I can provide her clinical findings and exam details as needed."
+    },
+    {
+      "agentId": "payer",
+      "principal": {
+        "type": "organization",
+        "name": "Acme Health Plan",
+        "description": "Regional managed care organization providing health insurance coverage with focus on evidence-based care and prior authorization for high-cost services"
+      },
+      "situation": "Processing real-time coverage requirements discovery request for diagnostic imaging study. Need to verify member eligibility, apply clinical criteria, and determine prior authorization requirements.",
+      "systemPrompt": "You are an agent representing Acme Health Plan's Coverage Requirements Discovery (CRD) service. You handle real-time inquiries from healthcare providers about coverage requirements for diagnostic and therapeutic services. Your verification and evaluation process must include: 1. Verify member identity (full name, DOB, member ID) and current coverage status 2. Confirm requesting provider identity and network status 3. Clarify the specific service requested (CPT code, clinical indication) 4. If any identifiers are missing or ambiguous, request clarification before proceeding. Once verified, use your tools to: - Look up coverage policies and clinical criteria for the requested service - Determine if prior authorization is required - Identify any required documentation or clinical criteria - Check for any existing authorizations. Provide clear, actionable guidance about coverage requirements, prior authorization needs, and next steps. Be professional and helpful while ensuring appropriate utilization of healthcare resources.",
+      "goals": [
+        "Verify member and provider identity",
+        "Apply appropriate coverage policies and clinical criteria", 
+        "Determine prior authorization requirements",
+        "Provide clear guidance on coverage and next steps"
+      ],
+      "tools": [
+        {
+          "toolName": "verify_member_eligibility",
+          "description": "Verify member eligibility and current coverage status",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "memberId": {
+                "type": "string",
+                "description": "Member ID from insurance card"
+              },
+              "memberName": {
+                "type": "string", 
+                "description": "Member's full name"
+              },
+              "dateOfBirth": {
+                "type": "string",
+                "description": "Member's date of birth (MM/DD/YYYY format)"
+              }
+            },
+            "required": ["memberId", "memberName", "dateOfBirth"]
+          },
+          "synthesisGuidance": "Look up member in knowledgeBase.members and return eligibility status, plan type, effective dates, and any special coverage notes as a professional eligibility verification summary."
+        },
+        {
+          "toolName": "lookup_coverage_policy",
+          "description": "Look up coverage policies and clinical criteria for specific medical services",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "cptCode": {
+                "type": "string",
+                "description": "CPT procedure code (e.g., '70450' for head CT)"
+              },
+              "planType": {
+                "type": "string",
+                "description": "Insurance plan type (PPO, HMO, EPO)"
+              },
+              "clinicalIndication": {
+                "type": "string",
+                "description": "Clinical reason for the service"
+              }
+            },
+            "required": ["cptCode", "planType"]
+          },
+          "synthesisGuidance": "Search knowledgeBase.coveragePolicies and return detailed policy information including coverage criteria, prior authorization requirements, documentation needs, and any alternative covered services."
+        },
+        {
+          "toolName": "check_existing_authorizations",
+          "description": "Check for existing prior authorizations for this member and service",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "memberId": {
+                "type": "string",
+                "description": "Member ID"
+              },
+              "cptCode": {
+                "type": "string", 
+                "description": "CPT code for service"
+              },
+              "dateRange": {
+                "type": "string",
+                "description": "Date range to check (e.g., 'last 6 months', 'current year')"
+              }
+            },
+            "required": ["memberId", "cptCode"]
+          },
+          "synthesisGuidance": "Search knowledgeBase.authorizations for any existing or recent authorizations and return status, dates, and authorization numbers."
+        },
+        {
+          "toolName": "initiate_prior_authorization",
+          "description": "Begin the prior authorization process and generate authorization request",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "memberId": {
+                "type": "string",
+                "description": "Member ID"
+              },
+              "cptCode": {
+                "type": "string",
+                "description": "CPT code requiring authorization"
+              },
+              "providerId": {
+                "type": "string",
+                "description": "Requesting provider identifier"
+              },
+              "clinicalJustification": {
+                "type": "string",
+                "description": "Clinical justification provided by provider"
+              },
+              "urgency": {
+                "type": "string",
+                "description": "Urgency level (routine, urgent, emergent)"
+              }
+            },
+            "required": ["memberId", "cptCode", "providerId", "clinicalJustification"]
+          },
+          "synthesisGuidance": "Generate a prior authorization request using knowledgeBase.authorizationTemplates and return the authorization request number, required documentation, and expected timeline for decision.",
+          "endsConversation": true,
+          "conversationEndStatus": "neutral"
+        },
+        {
+          "toolName": "approve_service_coverage",
+          "description": "Approve coverage for service that meets clinical criteria without requiring prior authorization",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "memberId": {
+                "type": "string",
+                "description": "Member ID"
+              },
+              "cptCode": {
+                "type": "string",
+                "description": "Approved CPT code"
+              },
+              "providerId": {
+                "type": "string", 
+                "description": "Requesting provider identifier"
+              },
+              "coverageReason": {
+                "type": "string",
+                "description": "Reason coverage is approved"
+              }
+            },
+            "required": ["memberId", "cptCode", "providerId", "coverageReason"]
+          },
+          "synthesisGuidance": "Generate coverage confirmation letter using knowledgeBase.approvalTemplates with confirmation number, covered services, and any limitations or requirements.",
+          "endsConversation": true,
+          "conversationEndStatus": "success"
+        }
+      ],
+      "knowledgeBase": {
+        "members": {
+          "AHP-445789": {
+            "name": "Jennifer Jones",
+            "dob": "1989-02-15",
+            "planType": "PPO Gold",
+            "effectiveDate": "2024-01-01",
+            "terminationDate": null,
+            "status": "active",
+            "copays": {
+              "imaging": "$75",
+              "specialist": "$40", 
+              "primary": "$25"
+            },
+            "deductible": {
+              "individual": "$500",
+              "met_to_date": "$150"
+            },
+            "priorAuthRequired": ["advanced_imaging", "surgery", "high_cost_drugs"]
+          }
+        },
+        "coveragePolicies": {
+          "70450": {
+            "service": "Head CT without contrast",
+            "planTypes": ["PPO", "HMO", "EPO"],
+            "priorAuthRequired": true,
+            "clinicalCriteria": [
+              "Acute onset severe headache with concerning features",
+              "New neurologic symptoms or signs", 
+              "Headache with fever and meningeal signs",
+              "Post-traumatic headache within 24 hours",
+              "Sudden onset worst headache of life"
+            ],
+            "documentation": [
+              "Clinical history and physical examination",
+              "Neurological examination findings",
+              "Description of headache characteristics",
+              "Red flag symptoms if present"
+            ],
+            "alternatives": [
+              "Consider MRI brain if contrast needed",
+              "Lumbar puncture if infectious cause suspected"
+            ],
+            "nonCoveredIndications": [
+              "Routine headache evaluation without red flags",
+              "Chronic stable headache pattern",
+              "Follow-up imaging for resolved conditions"
+            ],
+            "turnaroundTime": "24-48 hours for routine, 4 hours for urgent",
+            "validityPeriod": "90 days"
+          }
+        },
+        "providerNetwork": {
+          "regional_medical_associates": {
+            "providerId": "NPI-9876543210",
+            "name": "Regional Medical Associates", 
+            "networkStatus": "participating",
+            "specialties": ["family_medicine", "internal_medicine"],
+            "providers": [
+              {
+                "name": "Dr. Sarah Good",
+                "npi": "1234567890",
+                "specialty": "family_medicine"
+              }
+            ]
+          }
+        },
+        "authorizations": {},
+        "authorizationTemplates": {
+          "imaging_request": {
+            "authIdPrefix": "IMG-2024-",
+            "requiredFields": ["clinical_indication", "physical_exam", "red_flag_symptoms"],
+            "reviewProcess": "clinical_review",
+            "timeline": "24-48 hours routine, 4 hours urgent"
+          }
+        },
+        "approvalTemplates": {
+          "immediate_approval": {
+            "confirmationPrefix": "COV-2024-",
+            "validityDays": 90,
+            "networkRequirement": true
+          }
+        }
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Acme Health Plan's Coverage Requirements Discovery service. I can help you understand coverage requirements for diagnostic and therapeutic services. To get started, I'll need to verify the member's information including their full name, date of birth, member ID, and the specific service you're requesting coverage for. What can I help you with today?"
+    }
+  ]
+}

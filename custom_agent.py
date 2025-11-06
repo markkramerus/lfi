@@ -7,6 +7,7 @@ from tool_surrogate_prompt_builder import build_tool_surrogate_prompt
 from agent_squad.types import ConversationMessage
 from typing import List, Dict, Optional, Union, AsyncIterable
 
+
 SCENARIO = None
 AGENT_CONFIG = None
 INPUT_TEXT = None

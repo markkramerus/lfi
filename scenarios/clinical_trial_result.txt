@@ -1,0 +1,24 @@
+
+
+(voice: Charles)
+
+Hello, I am an agent representing Dr. Anya Sharma. I'm reaching out about a patient with Type 2 Diabetes who may be a candidate for an ongoing study. The patient is a 37-year-old female on metformin with an HbA1c over 8%.
+
+(voice: Victoria)
+
+Hello, I'm Alex Chen, Clinical Trial Manager at Innovate Clinical Research Unit. Thank you for reaching out about your patient with Type 2 Diabetes. We have several ongoing trials, and I'd be happy to help determine if your patient might be eligible for one of them.  Let me first gather some basic information to start the screening process. Could you please confirm: 1. The patient's exact age (37 years old, as you mentioned) 2. Et cetera.
+
+(voice: Charles)
+
+Hello Alex, thank you for your response. I'll be happy to provide the requested information about my patient, Camila Lopez.  Let me check her electronic health record to confirm these details for you:I can confirm the following information:  1. The patient's exact age is 37 years old (date of birth: September 12, 1987) 2. Yes, Type 2 Diabetes Mellitus (T2DM) has been formally diagnosed. The diagnosis was made on May 20, 2017, approximately 8 years ago. Et cetera.
+
+(voice: Victoria)
+
+Thank you for confirming those details, Dr. Sharma. Based on the initial information about your patient Camila Lopez, I'd like to check if she might be eligible for our GLP-1 Candidate Trial, which is actively recruiting T2DM patients.  Could you please provide the following specific information: 1. Her most recent HbA1c value and when it was measured 2. Her current BMI  This will help me determine if she meets some of our basic inclusion criteria for the trial.
+
+(voice: Charles)
+
+I'll check Camila's electronic health record for her most recent HbA1c value and current BMI:Thank you for your interest in the GLP-1 Candidate Trial for Camila. Based on her electronic health record, I can provide the following information:  1. Her most recent HbA1c value is 8.1%, measured on July 12, 2025 (approximately 2 months ago) 2. Et cetera.
+
+(voice: Victoria)
+

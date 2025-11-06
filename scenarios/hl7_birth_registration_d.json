@@ -1,0 +1,376 @@
+{
+  "metadata": {
+    "id": "birth_registration_submission",
+    "title": "Birth Registration Data Submission to State Vital Records",
+    "tags": [
+      "birth-registration",
+      "vital-records",
+      "fhir",
+      "bfdr",
+      "public-health"
+    ],
+    "description": "Hospital birth registrar submits structured birth registration data to state vital records office for official birth certificate processing",
+    "background": "Under state law, hospitals must submit birth registration data to the vital records office within 5 days of birth. This scenario covers the electronic submission of FHIR-structured birth data and the vital records office's validation and acceptance process.",
+    "challenges": [
+      "Ensuring complete and accurate demographic data",
+      "Validating clinical information meets legal requirements",
+      "Handling data quality issues and missing information",
+      "Coordinating between clinical and administrative systems"
+    ]
+  },
+  "agents": [
+    {
+      "agentId": "hospital_registrar",
+      "principal": {
+        "type": "individual",
+        "name": "Maria Santos, Birth Registrar",
+        "description": "Certified birth registrar at Metropolitan Medical Center responsible for submitting birth registration data to state vital records"
+      },
+      "situation": "Need to submit birth registration for baby born 3 days ago. Clinical data has been reviewed and maternal/paternal information collected. Ready to compile and transmit official birth registration.",
+      "systemPrompt": "You are an agent representing Maria Santos, the birth registrar at Metropolitan Medical Center. Your role is to submit complete and accurate birth registration data to the state vital records office. Start by introducing yourself and the purpose of your submission. Confirm what specific data elements and format the vital records office requires before retrieving and sharing detailed birth information. Use your tools to gather clinical details, demographic information, and administrative data as needed. Focus on progressive disclosure - provide only what's requested rather than overwhelming with all available data upfront.",
+      "goals": [
+        "Submit complete birth registration data within legal timeframe",
+        "Ensure all required demographic and clinical fields are accurate",
+        "Obtain official registration confirmation from state vital records",
+        "Resolve any data quality issues identified during submission"
+      ],
+      "tools": [
+        {
+          "toolName": "retrieve_birth_record",
+          "description": "Retrieve comprehensive birth record information using natural language queries",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Natural language query about birth record details (e.g., 'clinical details for Baby Johnson born January 15th' or 'maternal demographics for MRN-78901')"
+              },
+              "recordId": {
+                "type": "string",
+                "description": "Optional: Specific birth record ID if not included in query"
+              }
+            },
+            "required": [
+              "query"
+            ]
+          },
+          "synthesisGuidance": "Search knowledgeBase.birthRecords and related clinical data. Return as structured markdown with clear sections for demographics, clinical details, and administrative information. Include all available data matching the query.",
+          "endsConversation": false
+        },
+        {
+          "toolName": "validate_registration_data",
+          "description": "Validate birth registration data against hospital requirements and prepare for submission",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "recordId": {
+                "type": "string",
+                "description": "Birth record identifier to validate"
+              },
+              "checkType": {
+                "type": "string",
+                "description": "Type of validation: 'completeness', 'accuracy', 'legal_requirements', or 'all'"
+              }
+            },
+            "required": [
+              "recordId"
+            ]
+          },
+          "synthesisGuidance": "Review knowledgeBase.birthRecords and knowledgeBase.validationRules. Return validation report as JSON with status, missing fields, warnings, and recommendations.",
+          "endsConversation": false
+        },
+        {
+          "toolName": "generate_fhir_bundle",
+          "description": "Generate FHIR Bundle containing structured birth registration data ready for submission",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "recordId": {
+                "type": "string",
+                "description": "Birth record ID to generate FHIR bundle for"
+              },
+              "includeOptional": {
+                "type": "boolean",
+                "description": "Whether to include optional data elements"
+              }
+            },
+            "required": [
+              "recordId"
+            ]
+          },
+          "synthesisGuidance": "Create a comprehensive FHIR Bundle from knowledgeBase.birthRecords following BFDR IG structure. Include Patient (mother), Patient (child), Encounter, Observation, and related resources. Format as properly structured JSON.",
+          "endsConversation": false
+        }
+      ],
+      "knowledgeBase": {
+        "birthRecords": {
+          "BR-2024-0156": {
+            "birthDate": "2024-01-15",
+            "birthTime": "14:23:00",
+            "facility": "Metropolitan Medical Center",
+            "mother": {
+              "name": "Jennifer Marie Johnson",
+              "dob": "1992-08-22",
+              "ssn": "555-XX-7890",
+              "address": "1234 Oak Street, Springfield, IL 62701",
+              "maritalStatus": "married",
+              "education": "college_graduate",
+              "occupation": "software_engineer",
+              "race": "white",
+              "ethnicity": "not_hispanic"
+            },
+            "father": {
+              "name": "Michael Robert Johnson",
+              "dob": "1990-03-15",
+              "ssn": "555-XX-4567",
+              "address": "1234 Oak Street, Springfield, IL 62701",
+              "education": "college_graduate",
+              "occupation": "accountant",
+              "race": "white",
+              "ethnicity": "not_hispanic"
+            },
+            "child": {
+              "name": "Emma Grace Johnson",
+              "sex": "female",
+              "birthWeight": "3200",
+              "gestationalAge": "39",
+              "plurality": "single",
+              "birthOrder": "1"
+            },
+            "clinical": {
+              "deliveryMethod": "vaginal",
+              "attendant": "MD",
+              "complications": "none",
+              "abnormalConditions": "none",
+              "apgarScore": {
+                "1min": 8,
+                "5min": 9
+              },
+              "prenatalCare": {
+                "visits": 12,
+                "startWeek": 8
+              }
+            },
+            "administrative": {
+              "medicalRecordNumber": "MRN-78901-2024",
+              "registrarId": "MS-001",
+              "submissionDue": "2024-01-20"
+            }
+          }
+        },
+        "validationRules": {
+          "required_fields": [
+            "mother_name",
+            "mother_dob",
+            "child_name",
+            "birth_date",
+            "birth_facility",
+            "attendant_type",
+            "gestational_age"
+          ],
+          "optional_fields": [
+            "father_information",
+            "prenatal_care_details",
+            "birth_complications"
+          ],
+          "data_quality_checks": [
+            "dates_logical_sequence",
+            "gestational_age_realistic",
+            "weight_within_range",
+            "names_properly_formatted"
+          ]
+        },
+        "hospitalInfo": {
+          "name": "Metropolitan Medical Center",
+          "npi": "1234567890",
+          "address": "5678 Hospital Drive, Springfield, IL 62702",
+          "contact": "birth.records@metromedical.org"
+        }
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Maria Santos, the birth registrar at Metropolitan Medical Center. I'm submitting birth registration data for a birth that occurred on January 15th, 2024, and need to ensure compliance with state reporting requirements. Could you please confirm what specific data elements and format you require for birth registration submissions? I can provide clinical details, demographic information, and generate FHIR-structured data as needed."
+    },
+    {
+      "agentId": "state_vital_records",
+      "principal": {
+        "type": "organization",
+        "name": "Illinois Department of Public Health - Vital Records",
+        "description": "State vital records office responsible for processing birth registrations and issuing official birth certificates"
+      },
+      "situation": "Processing incoming birth registration submissions from hospitals and birthing facilities across the state. Must validate submissions meet legal requirements before accepting for official birth certificate processing.",
+      "systemPrompt": "You are an agent representing the Illinois Department of Public Health Vital Records Office. When hospitals submit birth registrations, first verify key identifiers: child's full name and birth date, mother's full name and date of birth, birth facility name and date of occurrence. Confirm the submitting facility's authority and registration timeline compliance. If any required identifiers are missing or unclear, request clarification before proceeding. Use your tools to check data against state requirements, validate formatting, and process acceptable submissions. Only accept complete, validated registrations that meet legal standards.",
+      "goals": [
+        "Verify birth registration data meets state legal requirements",
+        "Validate submitting facility authority and timeline compliance",
+        "Process complete registrations for official birth certificate creation",
+        "Identify and resolve data quality issues before acceptance"
+      ],
+      "tools": [
+        {
+          "toolName": "validate_facility_authority",
+          "description": "Validate that submitting facility has authority to submit birth registrations",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "facilityName": {
+                "type": "string",
+                "description": "Name of the submitting facility"
+              },
+              "npi": {
+                "type": "string",
+                "description": "National Provider Identifier of facility"
+              }
+            },
+            "required": [
+              "facilityName"
+            ]
+          },
+          "synthesisGuidance": "Check knowledgeBase.authorizedFacilities for facility credentials and registration authority. Return JSON with validation status, facility details, and any restrictions or notes.",
+          "endsConversation": false
+        },
+        {
+          "toolName": "check_legal_requirements",
+          "description": "Check birth registration data against Illinois state legal requirements",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "dataElements": {
+                "type": "object",
+                "description": "Birth registration data elements to validate"
+              },
+              "submissionDate": {
+                "type": "string",
+                "description": "Date of registration submission"
+              },
+              "birthDate": {
+                "type": "string",
+                "description": "Date of birth occurrence"
+              }
+            },
+            "required": [
+              "dataElements",
+              "birthDate"
+            ]
+          },
+          "synthesisGuidance": "Validate against knowledgeBase.legalRequirements including mandatory fields, data formats, and submission timeline. Return comprehensive validation report as JSON with compliance status, missing elements, and corrective actions needed.",
+          "endsConversation": false
+        },
+        {
+          "toolName": "accept_birth_registration",
+          "description": "Accept valid birth registration and generate official registration number",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "childName": {
+                "type": "string",
+                "description": "Full name of child"
+              },
+              "birthDate": {
+                "type": "string",
+                "description": "Date of birth"
+              },
+              "motherName": {
+                "type": "string",
+                "description": "Full name of mother"
+              },
+              "acceptanceNotes": {
+                "type": "string",
+                "description": "Any notes about the registration acceptance"
+              }
+            },
+            "required": [
+              "childName",
+              "birthDate",
+              "motherName"
+            ]
+          },
+          "synthesisGuidance": "Generate official birth registration acceptance using knowledgeBase.templates.acceptance. Include new registration number from knowledgeBase.registrationSequence and processing timeline. Format as formal acceptance letter.",
+          "endsConversation": true,
+          "conversationEndStatus": "success"
+        },
+        {
+          "toolName": "reject_birth_registration",
+          "description": "Reject incomplete or invalid birth registration with detailed explanation",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "rejectionReason": {
+                "type": "string",
+                "description": "Primary reason for rejection"
+              },
+              "missingElements": {
+                "type": "array",
+                "description": "List of missing required data elements"
+              },
+              "correctionInstructions": {
+                "type": "string",
+                "description": "Instructions for correcting and resubmitting"
+              }
+            },
+            "required": [
+              "rejectionReason"
+            ]
+          },
+          "synthesisGuidance": "Generate formal rejection notice using knowledgeBase.templates.rejection. Include specific deficiencies, legal requirements not met, and clear resubmission instructions. Be professional but thorough in explaining compliance requirements.",
+          "endsConversation": true,
+          "conversationEndStatus": "failure"
+        }
+      ],
+      "knowledgeBase": {
+        "legalRequirements": {
+          "mandatory_fields": [
+            "child_full_name",
+            "birth_date",
+            "birth_time",
+            "birth_place",
+            "mother_full_name",
+            "mother_dob",
+            "mother_residence",
+            "gestational_age",
+            "birth_attendant",
+            "delivery_method"
+          ],
+          "submission_timeline": {
+            "hospital_births": "5 days",
+            "home_births": "10 days",
+            "late_penalty": "applies after 30 days"
+          },
+          "data_formats": {
+            "dates": "YYYY-MM-DD",
+            "names": "proper case, no special characters",
+            "addresses": "USPS standard format"
+          }
+        },
+        "authorizedFacilities": {
+          "Metropolitan Medical Center": {
+            "npi": "1234567890",
+            "license": "IL-HOSP-2024-001",
+            "status": "active",
+            "birth_volume": "high",
+            "last_audit": "2023-08-15",
+            "compliance_score": "excellent"
+          }
+        },
+        "registrationSequence": "IL-2024-",
+        "templates": {
+          "acceptance": {
+            "header": "ILLINOIS DEPARTMENT OF PUBLIC HEALTH",
+            "title": "BIRTH REGISTRATION ACCEPTANCE",
+            "processing_days": 10,
+            "certificate_fee": "$15.00"
+          },
+          "rejection": {
+            "header": "ILLINOIS DEPARTMENT OF PUBLIC HEALTH",
+            "title": "BIRTH REGISTRATION REJECTION NOTICE",
+            "appeal_period": "30 days",
+            "contact_info": "vital.records@illinois.gov"
+          }
+        },
+        "statistics": {
+          "annual_registrations": 155000,
+          "average_processing_time": "7 days",
+          "rejection_rate": "3.2%"
+        }
+      }
+    }
+  ]
+}

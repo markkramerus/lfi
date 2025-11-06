@@ -1,0 +1,388 @@
+{
+  "metadata": {
+    "id": "vyepti-injection-prior-auth",
+    "title": "Vyepti Injection Approval for Migraine",
+    "description": "Multi-agent scenario for approving Vyepti injection for migraine treatment by reconciling patient's medication history from EHR with payer's personal and medical policies.",
+    "background": "A patient with chronic migraine has failed multiple preventive therapies. The provider requests approval for Vyepti (eptinezumab) injection. The process involves the EHR agent providing medication history, the payer agent coordinating, the personal policy reviewer checking eligibility and benefits, and the medical policy reviewer evaluating clinical criteria.",
+    "challenges": [
+      "Reconciling disparate data sources (EHR history vs. payer records)",
+      "Verifying patient eligibility under personal policy terms",
+      "Applying medical necessity criteria for Vyepti per guidelines"
+    ]
+  },
+  "agents": [
+    {
+      "agentId": "ehr_agent",
+      "principal": {
+        "type": "organization",
+        "name": "City General Hospital EHR System",
+        "description": "Electronic Health Record system managing patient clinical data"
+      },
+      "situation": "The EHR agent has access to the patient's complete medication and treatment history for migraine management.",
+      "systemPrompt": "You are an agent representing City General Hospital EHR System. You assist in providing verified patient medication history and clinical records. You are requesting Prior Authorization for Alex Rivera for Vyepti medication coverage. If identifiers are missing or ambiguous, ask for clarification. Use tools to fetch only targeted information as needed in the conversation, starting with high-level summaries and progressing to details based on requirements.",
+      "goals": [
+        "Provide accurate medication history",
+        "Share relevant clinical documentation progressively"
+      ],
+      "tools": [
+        {
+          "toolName": "search_patient_records",
+          "description": "Search patient medical records using natural language queries about medication history and treatments",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Natural language search query (e.g., 'migraine medication history for patient MRN-123456 from last 2 years')"
+              },
+              "patientId": {
+                "type": "string",
+                "description": "Optional: Patient MRN if not included in query"
+              }
+            },
+            "required": [
+              "query"
+            ]
+          },
+          "synthesisGuidance": "Search knowledgeBase.patientRecords matching the query. Return as a structured markdown report with timelines, medication names, dosages, durations, and outcomes. Focus on migraine-related treatments and avoid unnecessary details.",
+          "endsConversation": false
+        },
+        {
+          "toolName": "generate_clinical_summary",
+          "description": "Generate a formal clinical summary for prior authorization purposes based on patient history",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "patientId": {
+                "type": "string",
+                "description": "Patient MRN"
+              },
+              "focus": {
+                "type": "string",
+                "description": "Focus area (e.g., 'migraine preventive therapy failure')"
+              }
+            },
+            "required": [
+              "patientId",
+              "focus"
+            ]
+          },
+          "synthesisGuidance": "Compile from knowledgeBase.patientRecords a professional clinical summary in markdown format, highlighting relevant history for treatment approval. Include dates, failed therapies, and rationale for next steps.",
+          "endsConversation": false
+        }
+      ],
+      "knowledgeBase": {
+        "patient": {
+          "mrn": "MRN-123456",
+          "name": "Alex Rivera",
+          "dob": "1980-05-12"
+        },
+        "patientRecords": [
+          {
+            "date": "2022-01-15",
+            "type": "diagnosis",
+            "notes": "Chronic migraine diagnosis, 15+ headache days per month"
+          },
+          {
+            "date": "2022-03-01",
+            "type": "medication_start",
+            "notes": "Started propranolol 40mg daily for migraine prevention"
+          },
+          {
+            "date": "2022-09-10",
+            "type": "medication_change",
+            "notes": "Switched to topiramate 50mg daily due to inadequate response"
+          },
+          {
+            "date": "2023-04-20",
+            "type": "medication_failure",
+            "notes": "Topiramate discontinued after 6 months; <50% reduction in headache frequency"
+          },
+          {
+            "date": "2023-06-05",
+            "type": "medication_start",
+            "notes": "Initiated Botox injections every 12 weeks"
+          },
+          {
+            "date": "2024-02-15",
+            "type": "medication_failure",
+            "notes": "Botox discontinued after 3 cycles; persistent severe migraines"
+          }
+        ]
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing City General Hospital EHR System. I'm reaching out to support a prior authorization request for Vyepti injection for our patient Alex Rivera regarding migraine treatment. What specific medication history or clinical details you require? I can retrieve and share targeted information as needed."
+    },
+    {
+      "agentId": "payer_agent",
+      "principal": {
+        "type": "organization",
+        "name": "Blue Horizon Insurance",
+        "description": "Health insurance payer handling prior authorizations and claims"
+      },
+      "situation": "The payer agent coordinates the approval process by facilitating communication and invoking specialized reviewers.",
+      "systemPrompt": "You are an agent representing Blue Horizon Insurance. You coordinate prior authorization requests by verifying details and engaging internal reviewers. First, confirm the patient's identity (full name, DOB, member ID), provider details, and request specifics (e.g., Vyepti injection for migraine). If anything is unclear, request clarification. Use tools to check basic coverage and escalate to reviewers as needed, ensuring progressive information exchange.",
+      "goals": [
+        "Verify request and patient eligibility",
+        "Coordinate with internal reviewers",
+        "Facilitate reconciliation of history and policies",
+        "Issue final decision"
+      ],
+      "tools": [
+        {
+          "toolName": "check_member_eligibility",
+          "description": "Check patient eligibility and basic coverage for a specific treatment using natural language query",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Natural language query (e.g., 'eligibility for Vyepti injection under member ID 789012 for migraine')"
+              },
+              "memberId": {
+                "type": "string",
+                "description": "Optional: Member ID if not in query"
+              }
+            },
+            "required": [
+              "query"
+            ]
+          },
+          "synthesisGuidance": "Query knowledgeBase.memberCoverage for eligibility details. Return as JSON with fields for coverage status, copay, prior auth requirements, and any exclusions. Be concise and factual.",
+          "endsConversation": false
+        },
+        {
+          "toolName": "escalate_to_reviewers",
+          "description": "Escalate the request to personal policy and medical policy reviewers with relevant details",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "details": {
+                "type": "string",
+                "description": "Summary of request details to escalate (e.g., patient info, treatment requested)"
+              }
+            },
+            "required": [
+              "details"
+            ]
+          },
+          "synthesisGuidance": "Simulate escalation by generating a markdown escalation note including the provided details. Reference knowledgeBase.escalationProtocol for format. This tool prepares for reviewer involvement without ending the conversation.",
+          "endsConversation": false
+        },
+        {
+          "toolName": "approve_request",
+          "description": "Approve the prior authorization request and generate approval artifacts. Call this before informing of the outcome.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "memberId": {
+                "type": "string",
+                "description": "Member ID"
+              },
+              "treatment": {
+                "type": "string",
+                "description": "Approved treatment (e.g., Vyepti injection)"
+              },
+              "authReason": {
+                "type": "string",
+                "description": "Reason for approval"
+              },
+              "validityPeriod": {
+                "type": "string",
+                "description": "Validity period (e.g., '12 months')"
+              }
+            },
+            "required": [
+              "memberId",
+              "treatment",
+              "authReason"
+            ]
+          },
+          "synthesisGuidance": "Generate a formal approval letter in markdown format using knowledgeBase.approvalTemplate. Include authorization number, effective dates, and instructions. Be professional and comprehensive.",
+          "endsConversation": true,
+          "conversationEndStatus": "success"
+        },
+        {
+          "toolName": "deny_request",
+          "description": "Deny the prior authorization request and generate denial artifacts. Call this before informing of the outcome.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "memberId": {
+                "type": "string",
+                "description": "Member ID"
+              },
+              "treatment": {
+                "type": "string",
+                "description": "Denied treatment"
+              },
+              "denialReason": {
+                "type": "string",
+                "description": "Reason for denial"
+              }
+            },
+            "required": [
+              "memberId",
+              "treatment",
+              "denialReason"
+            ]
+          },
+          "synthesisGuidance": "Generate a formal denial letter in markdown format using knowledgeBase.denialTemplate. Include appeal rights, specific policy references, and next steps.",
+          "endsConversation": true,
+          "conversationEndStatus": "failure"
+        }
+      ],
+      "knowledgeBase": {
+        "patient": {
+          "name": "Alex Rivera",
+          "dob": "1980-05-12"
+        },
+        "memberCoverage": {
+          "789012": {
+            "planType": "PPO"
+          }
+        },
+        "escalationProtocol": "Escalate to Personal Policy Reviewer for benefit verification, then Medical Policy Reviewer for criteria check.",
+        "approvalTemplate": "Dear Provider, Authorization approved for [treatment] for member [memberId]. Auth #: [number]. Valid: [period].",
+        "denialTemplate": "Dear Provider, Request for [treatment] denied for member [memberId]. Reason: [reason]. Appeal instructions enclosed."
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Acme Health Plan. Before we proceed, I can verify eligibility and policy criteria for your request. Please share the member's full name, DOB, member ID, the requested CPT code, and your role/organization so I can confirm requirements and advise on the needed documentation.",
+      "agentPrompt": "You are an AI agent representing Blue Horizon Insurance, a health insurance payer handling prior authorizations and claims.\n\n# Goals\n\nYour objectives are:\n\nVerify request and patient eligibility\nCoordinate with internal reviewers\nFacilitate reconciliation of history and policies\nIssue final decision\n\n# Client responsibilities\n\nUSE being_chat_thread tool ONLY ONCE and obtain the conversationId.\n\nFor each client message: call send_message_to_chat_thread, then poll with check_replies until a response is available from the EHR agent.\nIf you are calling the tool send_message_to_policy_agents, wait for the response before proceeding, get the response and take decision on next steps.\nObserve guidance and status to decide when to send next input; stop when conversation_ended is true.\nThe begin_chat_thread, send_message_to_chat_thread and check_replies tools are for communicating with the EHR agent. Use them to clarify details, confirm information, and facilitate discussion.\n\nThe send_message_to_policy_agents tool is for querying the knowledge base to verify member coverage, policy details, and prior authorizations.\nescalationProtocol: Escalate to Personal Policy Reviewer (benefit verification), then Medical Policy Reviewer (criteria check).\nWhen escalating to the reviewers (Medical or Personal Policy Reviewer), use the same conversation id obtained from the begin_chat_thread tool. When they respond with asking for more information use the same send_message_to_policy_agents tool to get the information and respond to them.\n\nOnly use the send_message_to_chat_thread and check_replies tools for communicating with the EHR agent. Do not use them for communicating with the reviewers.\n\n# Tools\n\n## approve_request\nDescription: Approve prior authorization and generate approval artifacts.\nInput:\nmemberId (string, required)\ntreatment (string, required)\nauthReason (string, required)\nvalidityPeriod (string, optional)\nGuidance: Use knowledgeBase.approvalTemplate. Generate a formal approval letter in markdown including auth number, effective dates, instructions.\nEnds conversation: Yes (status: success)\n\n## deny_request\nDescription: Deny prior authorization and generate denial artifacts.\nInput:\nmemberId (string, required)\ntreatment (string, required)\ndenialReason (string, required)\nGuidance: Use knowledgeBase.denialTemplate. Generate a formal denial letter in markdown with appeal rights, policy references, next steps.\nEnds conversation: Yes (status: failure)\n\n# Knowledge Base\n\nmemberCoverage:\nMember ID 789012\n## approvalTemplate:\nDear Provider, Authorization approved for [treatment] for member [memberId]. Auth #: [number]. Valid: [period].\n## denialTemplate:\nDear Provider, Request for [treatment] denied for member [memberId]. Reason: [reason]. Appeal instructions enclosed.\n\n## Message to Use When Initiating Conversation\n\nHello, I'm an agent representing Blue Horizon Insurance. Before we proceed, I can verify eligibility and policy criteria for your request. Please share the member's full name, DOB, member ID, the requested CPT code, and your role/organization so I can confirm requirements and advise on the needed documentation."
+    },
+    {
+      "agentId": "personal_policy_reviewer",
+      "principal": {
+        "type": "individual",
+        "name": "CoC Reviewer",
+        "description": "Payer's personal policy reviewer specializing in member benefits and eligibility"
+      },
+      "situation": "The personal policy reviewer evaluates if the patient's plan covers Vyepti based on personal policy terms.",
+      "systemPrompt": "You are Blue Horizon Insurance's personal policy reviewer. You assess member-specific benefits and eligibility. First, verify patient identifiers (name, DOB, member ID) and plan details from the escalation. If unclear, request more info. Use tools to check coverage specifics, focusing on copays, limits, and exclusions for migraine treatments. Share only what's necessary for the decision.",
+      "goals": [
+        "Verify personal policy coverage for Vyepti",
+        "Confirm no benefit exclusions or limits",
+        "Provide eligibility assessment to payer agent"
+      ],
+      "tools": [
+        {
+          "toolName": "review_personal_policy",
+          "description": "Review personal policy benefits for a specific treatment using natural language query",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Natural language query (e.g., 'coverage for Vyepti under member 789012 PPO plan')"
+              },
+              "memberId": {
+                "type": "string",
+                "description": "Optional: Member ID"
+              }
+            },
+            "required": [
+              "query"
+            ]
+          },
+          "synthesisGuidance": "Consult knowledgeBase.personalPolicies for the member. Return as JSON with coverage status, prior auth needs, cost-sharing, and any personal riders or exclusions. Structure for easy integration into overall decision.",
+          "endsConversation": false
+        }
+      ],
+      "knowledgeBase": {
+        "personalPolicies": {
+          "789012": {
+            "plan": "PPO Gold",
+            "migraineBenefits": {
+              "preventives": "Covered with prior auth",
+              "injectables": "100% after deductible for Vyepti if medically necessary",
+              "limits": "Max 4 injections per year",
+              "exclusions": "None"
+            }
+          }
+        }
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Jamie Patel, personal policy reviewer at Blue Horizon Insurance. I've been escalated to review coverage for Vyepti injection under the patient's personal policy for migraine treatment. Could we confirm the member details and any specific benefit questions? I'll assess eligibility based on plan terms."
+    },
+    {
+      "agentId": "medical_policy_reviewer",
+      "principal": {
+        "type": "individual",
+        "name": "Medical Policy Reviewer",
+        "description": "Payer's medical policy reviewer specializing in clinical criteria for treatments"
+      },
+      "situation": "The medical policy reviewer evaluates if the patient's history meets clinical criteria for Vyepti approval.",
+      "systemPrompt": "You are Blue Horizon Insurance's medical policy reviewer. You apply medical necessity criteria. First, verify patient clinical history and identifiers from provided data. If details are insufficient, request more. Use tools to evaluate against policies, focusing on failed therapies and migraine severity. Provide evidence-based assessment.",
+      "goals": [
+        "Evaluate medical necessity for Vyepti",
+        "Check against policy criteria for migraine injectables",
+        "Recommend approval or denial with rationale"
+      ],
+      "tools": [
+        {
+          "toolName": "evaluate_medical_policy",
+          "description": "Evaluate if patient meets medical policy criteria for a treatment using natural language input of history",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "historySummary": {
+                "type": "string",
+                "description": "Summary of patient's medication and treatment history"
+              },
+              "treatment": {
+                "type": "string",
+                "description": "Treatment under review (e.g., Vyepti for migraine)"
+              }
+            },
+            "required": [
+              "historySummary",
+              "treatment"
+            ]
+          },
+          "synthesisGuidance": "Compare the provided history against knowledgeBase.medicalPolicies for the treatment. Return as JSON with metCriteria array, unmetCriteria, and overall recommendation (approve/deny/pending). Include policy references and rationale.",
+          "endsConversation": false
+        },
+        {
+          "toolName": "generate_policy_decision",
+          "description": "Generate a formal medical policy decision report. Call this to finalize assessment.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "patientId": {
+                "type": "string",
+                "description": "Patient MRN or member ID"
+              },
+              "decision": {
+                "type": "string",
+                "description": "Decision: 'approve' or 'deny'"
+              },
+              "rationale": {
+                "type": "string",
+                "description": "Detailed rationale"
+              }
+            },
+            "required": [
+              "patientId",
+              "decision",
+              "rationale"
+            ]
+          },
+          "synthesisGuidance": "Create a professional markdown report detailing the policy review, criteria met/unmet, and decision. Reference specific guidelines from knowledgeBase.",
+          "endsConversation": false
+        }
+      ],
+      "knowledgeBase": {
+        "medicalPolicies": {
+          "vyepti_migraine": {
+            "criteria": [
+              "Diagnosis of chronic migraine (15+ headache days/month)",
+              "Failure of at least 2 oral preventive therapies (e.g., propranolol, topiramate)",
+              "Failure of or contraindication to Botox if applicable",
+              "No contraindications to Vyepti (e.g., severe cardiovascular disease)"
+            ],
+            "guidelines": "Based on FDA approval and payer's evidence-based policy; requires documentation of inadequate response defined as <50% reduction in headache days.",
+            "approvalThreshold": "All criteria must be met for step therapy completion"
+          }
+        }
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Dr. Lisa Nguyen, medical policy reviewer at Blue Horizon Insurance. Escalated to assess clinical criteria for Vyepti injection approval for the patient's migraine based on provided history. Could we confirm the key clinical details (e.g., failed therapies, migraine frequency)? I'll evaluate against our medical policies."
+    }
+  ]
+}

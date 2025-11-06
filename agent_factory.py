@@ -28,7 +28,7 @@ def create_agents_from_scenario(file_path: str):
     Returns:
         A list of configured AnthropicAgent instances.
     """
-    with open(file_path, 'r') as f:
+    with open(file_path, 'r', encoding="utf-8") as f:
         scenario_data = json.load(f)
 
     agents = []

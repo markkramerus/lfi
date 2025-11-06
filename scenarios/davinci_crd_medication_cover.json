@@ -1,0 +1,379 @@
+{
+  "metadata": {
+    "id": "crd_medication_coverage_discovery",
+    "title": "CRD Medication Coverage Requirements Discovery",
+    "tags": [
+      "crd",
+      "coverage-requirements",
+      "medication",
+      "prior-auth",
+      "davinci"
+    ],
+    "description": "A provider's EHR system queries a payer's Coverage Requirements Discovery (CRD) service to understand coverage requirements and documentation needs for a high-cost medication before prescribing, enabling proactive compliance with payer requirements.",
+    "background": "Under the DaVinci CRD implementation guide, providers can query payers in real-time during clinical workflows to discover coverage requirements, prior authorization needs, and required documentation. This reduces downstream prior authorization delays and rejections by surfacing requirements at the point of care.",
+    "challenges": [
+      "Real-time integration with clinical workflows",
+      "Accurate patient and coverage identification",
+      "Clear communication of complex coverage criteria",
+      "Actionable guidance for clinical staff"
+    ]
+  },
+  "agents": [
+    {
+      "agentId": "ehr_system",
+      "principal": {
+        "type": "organization",
+        "name": "Regional Medical Center EHR System",
+        "description": "Electronic Health Record system representing the provider organization"
+      },
+      "situation": "Dr. Martinez is prescribing Humira (adalimumab) for a patient with rheumatoid arthritis. The EHR system needs to check coverage requirements before completing the prescription to avoid delays.",
+      "systemPrompt": "You are an agent representing Regional Medical Center's EHR system. You are integrated with the clinical workflow and can query coverage requirements in real-time using CRD services. When a clinician is prescribing medications or ordering services, you proactively check with payers to discover coverage requirements, prior authorization needs, and documentation requirements. Start by confirming the patient identity and medication details with the payer, then request specific coverage guidance. Use your tools to gather clinical context and patient information as needed during the conversation.",
+      "goals": [
+        "Discover coverage requirements for the prescribed medication",
+        "Identify any prior authorization requirements",
+        "Obtain specific documentation requirements",
+        "Provide actionable guidance to the clinician"
+      ],
+      "tools": [
+        {
+          "toolName": "lookup_patient_clinical_context",
+          "description": "Retrieve relevant clinical information for the patient from the EHR",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Natural language query about patient clinical information (e.g., 'diagnosis history and previous treatments for patient ID 12345')"
+              },
+              "patientId": {
+                "type": "string",
+                "description": "Patient identifier if not included in query"
+              }
+            },
+            "required": [
+              "query"
+            ]
+          },
+          "synthesisGuidance": "Search the knowledgeBase.clinicalData for relevant patient information. Return as structured clinical summary with diagnoses, medications, lab results, and treatment history relevant to the query."
+        },
+        {
+          "toolName": "retrieve_insurance_details",
+          "description": "Look up patient's current insurance coverage and member information",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "patientId": {
+                "type": "string",
+                "description": "Patient identifier"
+              }
+            },
+            "required": [
+              "patientId"
+            ]
+          },
+          "synthesisGuidance": "Return patient insurance information from knowledgeBase.insuranceData including payer name, member ID, plan type, and coverage effective dates."
+        },
+        {
+          "toolName": "generate_crd_request",
+          "description": "Generate a structured CRD request with patient and medication details",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "patientId": {
+                "type": "string",
+                "description": "Patient identifier"
+              },
+              "medicationDetails": {
+                "type": "string",
+                "description": "Medication name, strength, and proposed therapy details"
+              },
+              "clinicalContext": {
+                "type": "string",
+                "description": "Relevant clinical context and indication"
+              }
+            },
+            "required": [
+              "patientId",
+              "medicationDetails",
+              "clinicalContext"
+            ]
+          },
+          "synthesisGuidance": "Create a formatted CRD request using knowledgeBase templates. Include patient demographics, insurance info, medication details, and clinical context in a structured format suitable for payer review."
+        }
+      ],
+      "knowledgeBase": {
+        "clinicalData": {
+          "patient_12345": {
+            "demographics": {
+              "name": "Sarah Johnson",
+              "dob": "1978-09-15",
+              "gender": "female"
+            },
+            "diagnoses": [
+              {
+                "code": "M05.9",
+                "description": "Rheumatoid arthritis, unspecified",
+                "onsetDate": "2022-03-15",
+                "severity": "moderate"
+              }
+            ],
+            "medications": [
+              {
+                "name": "Methotrexate",
+                "dose": "15mg weekly",
+                "startDate": "2022-04-01",
+                "duration": "18 months",
+                "response": "partial response, insufficient control"
+              },
+              {
+                "name": "Sulfasalazine",
+                "dose": "2g daily",
+                "startDate": "2022-08-15",
+                "duration": "12 months",
+                "response": "minimal improvement"
+              }
+            ],
+            "labResults": [
+              {
+                "date": "2024-01-15",
+                "test": "CRP",
+                "value": "12.5 mg/L",
+                "reference": "<3.0 mg/L",
+                "status": "elevated"
+              },
+              {
+                "date": "2024-01-15",
+                "test": "ESR",
+                "value": "45 mm/hr",
+                "reference": "<20 mm/hr",
+                "status": "elevated"
+              }
+            ],
+            "functionalStatus": "Limited mobility, difficulty with daily activities, moderate joint swelling and tenderness"
+          }
+        },
+        "insuranceData": {
+          "patient_12345": {
+            "payer": "Anthem Blue Cross Blue Shield",
+            "memberId": "ABC123456789",
+            "planType": "PPO",
+            "planName": "Anthem Blue Access PPO",
+            "effectiveDate": "2024-01-01",
+            "deductible": "$2000",
+            "pharmacyBenefit": "Express Scripts"
+          }
+        },
+        "templates": {
+          "crd_request": {
+            "format": "FHIR R4 CRD request bundle",
+            "required_elements": [
+              "patient",
+              "coverage",
+              "medication_request",
+              "practitioner",
+              "organization"
+            ]
+          }
+        }
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Regional Medical Center's EHR system. I'm reaching out regarding coverage requirements discovery for a medication our clinician is prescribing. We have a patient, Sarah Johnson (DOB: 09/15/1978, Member ID: ABC123456789 with Anthem BCBS), for whom Dr. Martinez wants to prescribe Humira (adalimumab) for rheumatoid arthritis. Could you confirm what coverage requirements and documentation you need for this medication? I can provide clinical context and treatment history as needed."
+    },
+    {
+      "agentId": "payer_crd_service",
+      "principal": {
+        "type": "organization",
+        "name": "Anthem Blue Cross Blue Shield CRD Service",
+        "description": "Payer's Coverage Requirements Discovery service that provides real-time coverage guidance"
+      },
+      "situation": "The CRD service receives queries from provider EHR systems about coverage requirements and responds with specific criteria, prior authorization requirements, and documentation needs.",
+      "systemPrompt": "You are an agent representing Anthem Blue Cross Blue Shield's Coverage Requirements Discovery (CRD) service. You respond to real-time queries from provider EHR systems about coverage requirements, prior authorization needs, and documentation requirements. First, verify the member's identity (full name, DOB, member ID) and confirm the requesting medication and clinical indication. If any information is missing or unclear, ask for clarification. Then use your tools to look up specific coverage policies and requirements. Provide clear, actionable guidance that helps the provider understand what documentation or steps are needed for coverage.",
+      "goals": [
+        "Verify member identity and coverage status",
+        "Determine coverage requirements for requested medication",
+        "Identify prior authorization requirements",
+        "Provide specific documentation requirements",
+        "Issue coverage determination or guidance"
+      ],
+      "tools": [
+        {
+          "toolName": "verify_member_coverage",
+          "description": "Verify member identity and active coverage status",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "memberId": {
+                "type": "string",
+                "description": "Member identification number"
+              },
+              "memberName": {
+                "type": "string",
+                "description": "Member full name"
+              },
+              "dateOfBirth": {
+                "type": "string",
+                "description": "Member date of birth (YYYY-MM-DD format)"
+              }
+            },
+            "required": [
+              "memberId",
+              "memberName",
+              "dateOfBirth"
+            ]
+          },
+          "synthesisGuidance": "Look up member in knowledgeBase.memberDatabase and return coverage status, plan details, and eligibility information as JSON."
+        },
+        {
+          "toolName": "lookup_drug_coverage_policy",
+          "description": "Look up coverage policy and requirements for a specific medication",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "medicationName": {
+                "type": "string",
+                "description": "Generic or brand name of medication"
+              },
+              "ndc": {
+                "type": "string",
+                "description": "National Drug Code if available"
+              },
+              "planType": {
+                "type": "string",
+                "description": "Member's plan type (PPO, HMO, etc.)"
+              }
+            },
+            "required": [
+              "medicationName",
+              "planType"
+            ]
+          },
+          "synthesisGuidance": "Search knowledgeBase.drugPolicies for coverage criteria. Return detailed policy information including prior authorization requirements, step therapy requirements, quantity limits, and required documentation as structured JSON."
+        },
+        {
+          "toolName": "check_prior_authorization_status",
+          "description": "Check if prior authorization is required and any existing PA status",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "memberId": {
+                "type": "string",
+                "description": "Member ID"
+              },
+              "medicationName": {
+                "type": "string",
+                "description": "Medication name"
+              }
+            },
+            "required": [
+              "memberId",
+              "medicationName"
+            ]
+          },
+          "synthesisGuidance": "Check knowledgeBase.priorAuthDatabase for any existing prior authorization requests or approvals for this member and medication. Return current status and any pending requirements."
+        },
+        {
+          "toolName": "generate_coverage_requirements_card",
+          "description": "Generate a CRD response card with coverage requirements and next steps",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "memberId": {
+                "type": "string",
+                "description": "Member ID"
+              },
+              "medicationName": {
+                "type": "string",
+                "description": "Requested medication"
+              },
+              "requirements": {
+                "type": "string",
+                "description": "Coverage requirements and documentation needed"
+              },
+              "priorAuthRequired": {
+                "type": "boolean",
+                "description": "Whether prior authorization is required"
+              }
+            },
+            "required": [
+              "memberId",
+              "medicationName",
+              "requirements",
+              "priorAuthRequired"
+            ]
+          },
+          "synthesisGuidance": "Generate a CDS Hooks-style card using knowledgeBase.cardTemplates with clear summary, detailed requirements, and actionable next steps. Format as structured JSON with summary, details, and suggestions sections.",
+          "endsConversation": true,
+          "conversationEndStatus": "success"
+        }
+      ],
+      "knowledgeBase": {
+        "memberDatabase": {
+          "ABC123456789": {
+            "name": "Sarah Johnson",
+            "dob": "1978-09-15",
+            "planType": "PPO",
+            "planName": "Anthem Blue Access PPO",
+            "status": "active",
+            "effectiveDate": "2024-01-01",
+            "pharmacyBenefit": "Express Scripts",
+            "deductibleRemaining": "$1500",
+            "specialtyTierCopay": "$75"
+          }
+        },
+        "drugPolicies": {
+          "adalimumab": {
+            "brandNames": [
+              "Humira",
+              "Adalimumab"
+            ],
+            "ndc": "0074-3799-02",
+            "tier": "specialty",
+            "priorAuthRequired": true,
+            "stepTherapyRequired": true,
+            "stepTherapyDrugs": [
+              "methotrexate",
+              "sulfasalazine",
+              "leflunomide"
+            ],
+            "trialDuration": "3 months minimum each drug",
+            "coverageCriteria": [
+              "Diagnosis of rheumatoid arthritis, ankylosing spondylitis, psoriatic arthritis, or inflammatory bowel disease",
+              "Failed adequate trial of at least 2 conventional DMARDs",
+              "Each DMARD trial must be minimum 3 months at therapeutic doses",
+              "Documented inadequate response or intolerance to conventional therapy",
+              "Laboratory monitoring requirements met"
+            ],
+            "requiredDocumentation": [
+              "Complete treatment history with dates and outcomes",
+              "Current inflammatory markers (CRP, ESR)",
+              "Functional assessment scores",
+              "Contraindications to other therapies if applicable",
+              "Baseline TB screening results"
+            ],
+            "quantityLimits": "40mg/0.8mL pre-filled pen, quantity 2 per 28 days",
+            "ageRestrictions": "18 years and older"
+          }
+        },
+        "priorAuthDatabase": {
+          "ABC123456789": {
+            "adalimumab": {
+              "status": "none",
+              "previousRequests": []
+            }
+          }
+        },
+        "cardTemplates": {
+          "coverage_requirements": {
+            "format": "CDS Hooks Card",
+            "sections": [
+              "summary",
+              "details",
+              "suggestions",
+              "links"
+            ]
+          }
+        }
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Anthem Blue Cross Blue Shield's Coverage Requirements Discovery service. I can help you understand coverage requirements and prior authorization needs for medications and services. Please provide the member information (name, DOB, member ID) and details about the medication or service you're inquiring about, and I'll look up the specific requirements and next steps needed."
+    }
+  ]
+}

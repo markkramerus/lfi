@@ -14,7 +14,40 @@ from agent_squad.types import ConversationMessage, ParticipantRole
 from agent_squad.classifiers import ClassifierResult
 from agent_chooser import AgentChooser
 from agent_factory import create_agents_from_scenario
-from main_prompt_builder import build_main_prompt
+
+MAX_LEN = 500
+
+def split_at_nearest_sentence(text, target_index):
+    """Splits a string at the word boundary nearest to the target index."""
+    if target_index < 0 or target_index >= len(text):
+        raise IndexError("Target index is out of the string's range.")
+    before_index = text.rfind('. ', 0, target_index)
+    after_index = text.find('. ', target_index)
+    # Handle edge cases where a space is not found on one or both sides
+    if before_index == -1 and after_index == -1:
+        # No spaces, return the full string
+        return text, ""
+    elif before_index == -1:
+        # No spaces before, split at the first space after
+        split_index = after_index
+    elif after_index == -1:
+        # No spaces after, split at the last space before
+        split_index = before_index
+    else:  # include the full sentence after the split (changed from closest period)
+        # # Compare distances to find the nearest space
+        # if (target_index - before_index) <= (after_index - target_index):
+        #     split_index = before_index
+        # else:
+        #     split_index = after_index
+        split_index = after_index
+    # Split the string at the nearest word boundary
+    first_part = text[:split_index]
+    second_part = text[split_index:].strip()  # .strip() removes leading whitespace
+    return first_part, second_part
+
+import llm_cache
+# Enable automatic caching for all LLM calls
+llm_cache.enable_auto_caching()
 
 # Suppress httpx info logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -41,8 +74,12 @@ async def main(args):
     else:
         scenario_path = os.path.join('scenarios', args[1])
         if not scenario_path.endswith('.json'):
-            scenario_path = f'{scenario_path}.json'
-    scenario_data, agents = create_agents_from_scenario(scenario_path)
+            scenario_path_json = f'{scenario_path}.json'
+        else:
+            scenario_path_json = scenario_path
+            scenario_path = scenario_path.replace(".json", "")
+    scenario_path_text = f'{scenario_path}_result.txt'
+    scenario_data, agents = create_agents_from_scenario(scenario_path_json)
     if not agents:
         print("No agents were created. Exiting.")
         return
@@ -89,7 +126,7 @@ async def main(args):
         )
     )
     
-    max_turns = 10
+    max_turns = 18
     turn_count = 0
     conversation_ended = False
 
@@ -142,11 +179,29 @@ async def main(args):
 
 
         for message in chat_history:
-            print(f"  {index}. Role: {message.role}, Content: {(json.dumps(message.content).replace('\n',' '))[0:100]}")
+            print(f"  {index}. Role: {message.role}, Content: {(json.dumps(message.content[0]["text"]).replace('\n',' '))[0:MAX_LEN]}")
             index = index + 1
         print("***************END CHAT HISTORY")
 
-
+        # create dialog file
+        with open(scenario_path_text, "w") as f:
+            index = 0
+            for message in chat_history:
+                if index % 2 == 0:
+                    f.write("\n\n(voice: Charles)\n\n")
+                else:
+                    f.write("\n\n(voice: Victoria)\n\n")
+                message_content = message.content[0]["text"].replace('\n',' ')
+                length = len(message_content)
+                if length > MAX_LEN:
+                    message_content, _ = split_at_nearest_sentence(message_content, MAX_LEN)
+                # for now, suppress the TOOL_CALLs:
+                message_content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', message_content)
+                message_content = re.sub(r'\n+', ' ', message_content)
+                f.write(message_content)
+                if length > MAX_LEN:
+                    f.write(". Et cetera.")
+                index += 1
 
         # The system prompt is now set in the agent factory.
         # The "next_request" variable holds the conversational message.

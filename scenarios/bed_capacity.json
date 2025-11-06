@@ -1,0 +1,329 @@
+{
+  "metadata": {
+    "id": "please-replace-this-placeholder-1757522589240-aryxe6",
+    "title": "Hospital Bed Capacity Query",
+    "description": "A care coordinator from one hospital queries bed availability at another hospital for patient transfer, involving verification of patient details and bed status checks.",
+    "background": "In healthcare, timely patient transfers between facilities require real-time bed availability checks while protecting patient privacy through verified communications.",
+    "challenges": [
+      "Ensuring secure verification of patient and facility identities before sharing sensitive bed data",
+      "Handling dynamic bed status updates without over-disclosing internal capacity details",
+      "Negotiating transfer requirements progressively without upfront data dumps"
+    ],
+    "tags": [
+      "fhir",
+      "safr",
+      "bed-management",
+      "patient-transfer"
+    ]
+  },
+  "agents": [
+    {
+      "agentId": "referring_coordinator",
+      "principal": {
+        "type": "individual",
+        "name": "Sarah Ramirez",
+        "description": "Care coordination specialist at City General Hospital"
+      },
+      "situation": "A patient requires transfer to a specialized facility for advanced care; initial contact to check bed availability.",
+      "systemPrompt": "You are an agent representing Sarah Ramirez, a care coordinator at City General Hospital. Your role is to inquire about bed availability for patient transfers to partner hospitals using FHIR SAFR protocols for secure verification. Start by introducing yourself and the general purpose, then confirm the receiving facility's identity using SAFR-compliant authentication patterns (e.g., organizational credentials, signed messages). Only share FHIR Patient resource identifiers (name, DOB, MRN) after mutual verification. Use tools to retrieve FHIR resources only as needed for the discussion, following progressive disclosure to minimize sensitive data exposure. Focus on SAFR principles: verify before disclose, request only necessary data.",
+      "goals": [
+        "Verify receiving hospital identity and transfer requirements",
+        "Provide necessary patient information securely",
+        "Confirm bed availability and transfer logistics"
+      ],
+      "tools": [
+        {
+          "toolName": "retrieve_patient_details",
+          "description": "Retrieve FHIR Patient and related resources (demographics, ServiceRequest for transfer) from the hospital's FHIR server using natural language query, following SAFR access control",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Natural language query for FHIR resources (e.g., 'transfer ServiceRequest for Patient John Doe MRN-12345')"
+              },
+              "patientId": {
+                "type": "string",
+                "description": "Optional: Patient MRN if not in query"
+              }
+            },
+            "required": [
+              "query"
+            ]
+          },
+          "synthesisGuidance": "Search knowledgeBase.fhirResources for matching Patient, ServiceRequest, and Condition resources. Return as FHIR JSON bundle with key elements: Patient demographics, ServiceRequest status/priority, Condition summary, and transfer rationale. Apply SAFR filtering: include only elements necessary for bed availability verification, redact sensitive clinical details."
+        },
+        {
+          "toolName": "confirm_transfer_readiness",
+          "description": "Generate FHIR Task resource confirming patient transfer readiness and create transfer summary Bundle",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "patientId": {
+                "type": "string",
+                "description": "Patient logical ID from FHIR Patient resource"
+              },
+              "receivingFacility": {
+                "type": "string",
+                "description": "Name of receiving hospital"
+              },
+              "bedType": {
+                "type": "string",
+                "description": "Type of bed needed (e.g., ICU, general)"
+              }
+            },
+            "required": [
+              "patientId",
+              "receivingFacility"
+            ]
+          },
+          "synthesisGuidance": "Using knowledgeBase.transferProtocols and FHIR profiles, generate a FHIR Bundle containing Task (transfer coordination), ServiceRequest (bed placement), and Patient references. Include care needs, estimated arrival, and digital signature for SAFR compliance. Format as valid FHIR JSON with narrative summary in markdown.",
+          "endsConversation": true,
+          "conversationEndStatus": "success"
+        }
+      ],
+      "knowledgeBase": {
+        "fhirResources": {
+          "Patient/MRN-12345": {
+            "resourceType": "Patient",
+            "id": "MRN-12345",
+            "identifier": [
+              {
+                "system": "http://hospital.example/mrn",
+                "value": "MRN-12345"
+              }
+            ],
+            "name": [
+              {
+                "text": "John Doe"
+              }
+            ],
+            "birthDate": "1975-05-20",
+            "managingOrganization": {
+              "display": "City General Hospital"
+            }
+          },
+          "ServiceRequest/transfer-001": {
+            "resourceType": "ServiceRequest",
+            "id": "transfer-001",
+            "status": "active",
+            "intent": "order",
+            "subject": {
+              "reference": "Patient/MRN-12345"
+            },
+            "code": {
+              "text": "Patient transfer to specialized facility"
+            },
+            "reasonCode": [
+              {
+                "text": "Acute respiratory failure requiring ECMO"
+              }
+            ],
+            "priority": "routine"
+          },
+          "Condition/respiratory-failure": {
+            "resourceType": "Condition",
+            "subject": {
+              "reference": "Patient/MRN-12345"
+            },
+            "code": {
+              "text": "Acute respiratory failure"
+            },
+            "clinicalStatus": "active"
+          }
+        },
+        "transferProtocols": {
+          "fhirProfiles": [
+            "http://hl7.org/fhir/us/safr/StructureDefinition/safr-task"
+          ],
+          "verificationSteps": [
+            "SAFR identity verification via signed FHIR message",
+            "Confirm patient identity using Patient resource match",
+            "Validate receiving facility Organization resource"
+          ],
+          "standardTimeline": "Transfer within 48 hours of bed confirmation"
+        }
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Sarah Ramirez, care coordination specialist at City General Hospital. I'm reaching out to inquire about bed availability for a patient transfer to your facility. Could we first confirm your identity as the bed management team and discuss what patient information you need for verification before I share details?"
+    },
+    {
+      "agentId": "receiving_bed_manager",
+      "principal": {
+        "type": "individual",
+        "name": "Dr. Michael Patel",
+        "description": "Bed management coordinator at Metro Specialty Hospital"
+      },
+      "situation": "Receiving inquiries from partner hospitals for specialized bed placements; must verify legitimacy before disclosing capacity.",
+      "systemPrompt": "You are an agent representing Dr. Michael Patel, bed management coordinator at Metro Specialty Hospital. When receiving transfer inquiries, follow FHIR SAFR IG for secure access: first verify the calling party's identity using SAFR authentication (Organization affiliation, digital signatures). Confirm patient identifiers via FHIR Patient resource matching (full name, DOB, MRN) before checking bed availability. Clarify required Location/Bed resources and timeframe. If any details missing or ambiguous, request clarification per SAFR verification patterns. Use tools to query only specific FHIR Location resources needed, avoiding broad capacity disclosures. Respond professionally, applying SAFR data minimization: share only necessary bed availability data.",
+      "goals": [
+        "Verify inquiring hospital and coordinator identity",
+        "Confirm patient details and transfer needs",
+        "Check and report targeted bed availability"
+      ],
+      "tools": [
+        {
+          "toolName": "check_bed_availability",
+          "description": "Query FHIR Location and Bed resources for availability using natural language, respecting SAFR access policies",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Natural language query for FHIR Location/Bed (e.g., 'ECMO-capable ICU bed availability for next 48 hours')"
+              },
+              "bedType": {
+                "type": "string",
+                "description": "Optional: Specific bed type (e.g., ICU, general, isolation)"
+              }
+            },
+            "required": [
+              "query"
+            ]
+          },
+          "synthesisGuidance": "Query knowledgeBase.fhirResources.Location for matching bed availability. Return as FHIR Bundle with Location resources filtered by availability status. Include: bed type, operational status, estimated wait time, restrictions. Apply SAFR rules: exclude total capacity, service delivery location details, and unrelated units. Format with markdown narrative summary."
+        },
+        {
+          "toolName": "reserve_bed",
+          "description": "Create FHIR Reservation/Task for bed allocation and generate SAFR-compliant confirmation Bundle",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "patientId": {
+                "type": "string",
+                "description": "Patient logical ID from FHIR Patient resource"
+              },
+              "bedType": {
+                "type": "string",
+                "description": "Type of bed being reserved"
+              },
+              "expectedArrival": {
+                "type": "string",
+                "description": "Estimated arrival date/time"
+              },
+              "referringHospital": {
+                "type": "string",
+                "description": "Name of referring facility"
+              }
+            },
+            "required": [
+              "patientId",
+              "bedType",
+              "referringHospital"
+            ]
+          },
+          "synthesisGuidance": "Update knowledgeBase.fhirResources.Location status and generate FHIR Bundle with Task (bed reservation), Slot (availability), and Encounter references. Include reservation ID, bed details, arrival instructions, and digital signature for audit trail. Format as valid FHIR JSON with professional markdown summary.",
+          "endsConversation": true,
+          "conversationEndStatus": "success"
+        },
+        {
+          "toolName": "decline_bed_request",
+          "description": "Generate FHIR OperationOutcome documenting bed unavailability per SAFR disclosure rules",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "patientId": {
+                "type": "string",
+                "description": "Patient MRN or name"
+              },
+              "reason": {
+                "type": "string",
+                "description": "Reason for unavailability (e.g., capacity, specialty mismatch)"
+              },
+              "referringHospital": {
+                "type": "string",
+                "description": "Name of referring facility"
+              }
+            },
+            "required": [
+              "patientId",
+              "reason",
+              "referringHospital"
+            ]
+          },
+          "synthesisGuidance": "Create FHIR OperationOutcome resource with issue details (no available beds) and polite decline message. Reference related Patient/ServiceRequest resources without exposing internal capacity. Suggest alternatives (waitlist, other facilities) if applicable. Include SAFR-compliant audit trail. Format as FHIR JSON with markdown explanation.",
+          "endsConversation": true,
+          "conversationEndStatus": "failure"
+        }
+      ],
+      "knowledgeBase": {
+        "fhirResources": {
+          "Location/icu-unit": {
+            "resourceType": "Location",
+            "id": "icu-unit",
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                    "code": "ICU"
+                  }
+                ]
+              }
+            ],
+            "operationalStatus": "active",
+            "availableBeds": 2,
+            "totalBeds": 20,
+            "nextAvailable": "2024-10-15T14:00:00Z",
+            "characteristic": [
+              {
+                "text": "ECMO-capable"
+              }
+            ]
+          },
+          "Location/general-unit": {
+            "resourceType": "Location",
+            "id": "general-unit",
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                    "code": "GENERAL-ACUTE-CARE"
+                  }
+                ]
+              }
+            ],
+            "operationalStatus": "active",
+            "availableBeds": 25,
+            "totalBeds": 150,
+            "nextAvailable": "2024-10-14T08:00:00Z"
+          },
+          "Organization/metro-specialty": {
+            "resourceType": "Organization",
+            "id": "metro-specialty",
+            "name": "Metro Specialty Hospital",
+            "type": [
+              {
+                "text": "Specialty Hospital"
+              }
+            ]
+          }
+        },
+        "safrPolicies": {
+          "accessControl": {
+            "bedAvailability": {
+              "permittedRoles": [
+                "BedManager",
+                "CareCoordinator"
+              ],
+              "requiredVerification": [
+                "organization-affiliation",
+                "patient-match"
+              ],
+              "dataMinimization": "Return only available beds matching criteria, exclude total capacity"
+            }
+          },
+          "auditTrail": "Log all bed queries with SAFR provenance extensions",
+          "partnerOrganizations": [
+            {
+              "reference": "Organization/city-general",
+              "name": "City General Hospital"
+            }
+          ]
+        },
+        "reservationSequence": "BED-RES-2024-"
+      },
+      "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Dr. Michael Patel, bed management coordinator at Metro Specialty Hospital. How can I assist with your bed availability inquiry today? To proceed securely, could you please confirm your name, hospital affiliation, and role in care coordination?"
+    }
+  ]
+}
