@@ -1,1 +1,12 @@
+# Project dependencies (unpinned)
 Flask
+python-dotenv
+anthropic
+
+# Agent Squad framework with all extras (includes AWS, Anthropic, OpenAI support)
+# This automatically installs boto3, anthropic, and other necessary dependencies
+agent-squad[all]
+
+# LLM caching - local package installed in editable mode
+# Install with: pip install -e ../llm-cache
+-e ../llm-cache

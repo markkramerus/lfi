@@ -179,7 +179,9 @@ async def main(args):
 
 
         for message in chat_history:
-            print(f"  {index}. Role: {message.role}, Content: {(json.dumps(message.content[0]["text"]).replace('\n',' '))[0:MAX_LEN]}")
+            msg = json.dumps(message.content[0]['text'])
+            msg = msg.replace('\n',' ')[0:MAX_LEN] 
+            print(f"  {index}. Role: {message.role}, Content: {msg}")
             index = index + 1
         print("***************END CHAT HISTORY")
 
