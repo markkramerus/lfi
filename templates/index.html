@@ -11,6 +11,9 @@
         <h2>Conversational Interoperability</h2>
         <h2 id="scenario-title"></h2>
         <h3 id="scenario-description"></h3>
+        <button id="start-audio-btn" style="margin-top: 10px; padding: 10px 20px; font-size: 16px; display: none;">
+            ▶️ Start Audio Playback
+        </button>
     </div>
     <div class="chat-container" id="chat-container">
         <!-- Chat messages will be inserted here by JavaScript -->
@@ -24,34 +27,60 @@
             document.getElementById('scenario-description').textContent = info.description;
         }
 
+        let currentlyPlayingAudio = null; // Track currently playing audio element
+        let pendingMessages = []; // Queue for messages waiting to display
+        let displayedMessageCount = 0;
+        let isProcessingQueue = false;
+        let userStartedAudio = false;
+        let waitingForUserStart = false;
+
         async function fetchChatHistory() {
             const response = await fetch('/history');
             const chatHistory = await response.json();
+            
+            // Don't interrupt if audio is playing - queue the update instead
+            if (currentlyPlayingAudio && !currentlyPlayingAudio.paused) {
+                // Store pending messages
+                if (chatHistory.length > displayedMessageCount) {
+                    pendingMessages = chatHistory.slice(displayedMessageCount);
+                }
+                return;
+            }
+            
             const chatContainer = document.getElementById('chat-container');
             
-            // Avoid re-rendering if the history hasn't changed
-            if (JSON.stringify(chatContainer.dataset.history) === JSON.stringify(chatHistory)) {
+            // Check if this is truly new content
+            const historyString = JSON.stringify(chatHistory);
+            if (chatContainer.dataset.history === historyString) {
                 return;
             }
-            // Check if user is near the bottom before new content is added
-            const threshold = 5; // pixels
-            const isScrolledToBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + threshold;
-
-            // Avoid re-rendering if the history hasn't changed
-            if (JSON.stringify(chatContainer.dataset.history) === JSON.stringify(chatHistory)) {
-                return;
+            
+            chatContainer.dataset.history = historyString;
+            
+            // If we have messages to display sequentially
+            if (chatHistory.length > displayedMessageCount) {
+                await displayMessagesSequentially(chatHistory);
             }
-            chatContainer.dataset.history = JSON.stringify(chatHistory);
+        }
 
-            chatContainer.innerHTML = ''; // Clear previous messages
-
-            chatHistory.forEach(message => {
+        async function displayMessagesSequentially(chatHistory) {
+            if (isProcessingQueue) return;
+            isProcessingQueue = true;
+            
+            const chatContainer = document.getElementById('chat-container');
+            
+            // Process only NEW messages one at a time
+            while (displayedMessageCount < chatHistory.length) {
+                const i = displayedMessageCount;
+                const message = chatHistory[i];
                 const side = message.role === 'assistant' ? 'left' : 'right';
                 const messageElement = document.createElement('div');
 
                 if (message.type === 'tool') {
                     messageElement.classList.add('tool-call', side);
                     messageElement.textContent = message.content;
+                    chatContainer.appendChild(messageElement);
+                    displayedMessageCount++;
                 } else {
                     messageElement.classList.add('chat-balloon', side);
 
@@ -65,13 +94,126 @@
 
                     messageElement.appendChild(agentName);
                     messageElement.appendChild(messageContent);
-                }
-                chatContainer.appendChild(messageElement);
-            });
 
-            // Auto-scroll only if the user was already at the bottom
-            if (isScrolledToBottom) {
+                    // Add audio player if audio URL is available
+                    if (message.audio_url) {
+                        const audioPlayer = document.createElement('audio');
+                        audioPlayer.classList.add('audio-player');
+                        audioPlayer.src = message.audio_url;
+                        audioPlayer.controls = true;
+                        audioPlayer.preload = 'auto';
+                        audioPlayer.playbackRate = 1.5; // Set default speed to 1.5x
+                        
+                        messageElement.appendChild(audioPlayer);
+                        chatContainer.appendChild(messageElement);
+                        
+                        // Auto-scroll
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                        
+                        // Increment BEFORE playing to avoid re-processing
+                        displayedMessageCount++;
+                        
+                        // Wait for audio metadata to load
+                        console.log(`Message ${i + 1}: Waiting for audio to load from ${message.audio_url}`);
+                        await new Promise((resolve) => {
+                            if (audioPlayer.readyState >= 2) {
+                                // Already loaded
+                                console.log(`Message ${i + 1}: Audio already loaded, duration: ${audioPlayer.duration}s`);
+                                resolve();
+                            } else {
+                                audioPlayer.addEventListener('loadedmetadata', () => {
+                                    console.log(`Message ${i + 1}: Audio metadata loaded, duration: ${audioPlayer.duration}s`);
+                                    resolve();
+                                }, { once: true });
+                                audioPlayer.addEventListener('error', (e) => {
+                                    console.log(`Message ${i + 1}: Audio load error:`, e);
+                                    resolve(); // Continue anyway
+                                }, { once: true });
+                            }
+                        });
+                        
+                        // Play audio and wait for completion
+                        currentlyPlayingAudio = audioPlayer;
+                        
+                        console.log(`Message ${i + 1}: Starting playback at 1.5x speed`);
+                        
+                        try {
+                            await new Promise((resolve) => {
+                                let resolved = false;
+                                
+                                const doResolve = () => {
+                                    if (!resolved) {
+                                        resolved = true;
+                                        console.log(`Audio ended for message ${i + 1}`);
+                                        resolve();
+                                    }
+                                };
+                                
+                                // Set up event listeners FIRST
+                                audioPlayer.addEventListener('ended', doResolve, { once: true });
+                                audioPlayer.addEventListener('error', (err) => {
+                                    console.log('Audio error:', err);
+                                    doResolve();
+                                }, { once: true });
+                                
+                                // Try to play
+                                audioPlayer.play().then(() => {
+                                    console.log(`Successfully started playing message ${i + 1}`);
+                                }).catch(e => {
+                                    console.log('Auto-play prevented for message', i + 1, e);
+                                    
+                                    // For first message, show start button and WAIT
+                                    if (i === 0 && !userStartedAudio) {
+                                        waitingForUserStart = true;
+                                        const startBtn = document.getElementById('start-audio-btn');
+                                        startBtn.style.display = 'inline-block';
+                                        
+                                        startBtn.onclick = () => {
+                                            userStartedAudio = true;
+                                            waitingForUserStart = false;
+                                            startBtn.style.display = 'none';
+                                            
+                                            audioPlayer.play().then(() => {
+                                                console.log('User initiated playback - audio will play until ended');
+                                                // Don't resolve here! Let the 'ended' event handle it
+                                            }).catch(err => {
+                                                console.log('Play failed even after user interaction:', err);
+                                                doResolve();
+                                            });
+                                        };
+                                    } else {
+                                        // This shouldn't happen for messages after the first, but handle it
+                                        console.log('Auto-play failed for non-first message - this is unexpected');
+                                        doResolve();
+                                    }
+                                });
+                            });
+                        } catch (e) {
+                            console.log('Audio playback error:', e);
+                        }
+                        
+                        currentlyPlayingAudio = null;
+                        console.log(`Finished playing message ${i + 1}`);
+                        
+                    } else {
+                        // No audio, just display
+                        chatContainer.appendChild(messageElement);
+                        displayedMessageCount++;
+                    }
+                }
+                
+                // Auto-scroll after each message
                 chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+            
+            isProcessingQueue = false;
+            
+            // Signal backend that all audio playback is complete
+            try {
+                await fetch('/audio_complete', { method: 'POST' });
+                console.log('Notified backend that audio playback is complete');
+            } catch (e) {
+                console.log('Failed to notify backend:', e);
             }
         }
 

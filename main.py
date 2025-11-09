@@ -8,7 +8,8 @@ import webbrowser
 import re
 import time
 from dotenv import load_dotenv
-from app import start_flask_app, update_chat_history, update_scenario_info
+from app import start_flask_app, update_chat_history, update_scenario_info, wait_for_audio_playback
+from tts_service import tts_service
 from agent_squad.orchestrator import AgentSquad, AgentSquadConfig
 from agent_squad.types import ConversationMessage, ParticipantRole
 from agent_squad.classifiers import ClassifierResult
@@ -67,7 +68,6 @@ async def main(args):
     user_id = "user_123"
     session_id = str(uuid.uuid4())
 
-    #print("--- Starting Secure Tool Use Demonstration ---")
     if len(args) != 2:
         print("You must pass in the name of the scenario as the command line argument")
         return
@@ -91,16 +91,16 @@ async def main(args):
         })
 
     # 2. Set up the orchestrator
-    initiating_agent = next((agent for agent in agents if 'messageToUseWhenInitiatingConversation' in agent.agent_config), None)
-    if not initiating_agent:
-        print("Could not find an initiating agent in the scenario.")
+    sending_agent = next((agent for agent in agents if 'messageToUseWhenInitiatingConversation' in agent.agent_config), None)
+    if not sending_agent:
+        print("Could not find an initiating agent in the scenario. You must specify an initiating message.")
         return
+    else:
+        sending_agent_id = sending_agent.id
+    responding_agent = next((agent for agent in agents if agent.id != sending_agent.id), None)
+    responding_agent_id = responding_agent.id if responding_agent else "Unknown"
     
-    other_agent = next((agent for agent in agents if agent.id != initiating_agent.id), None)
-    initiating_agent_id = initiating_agent.id
-    other_agent_id = other_agent.id if other_agent else "Unknown"
-    
-    classifier = AgentChooser(initiating_agent_id=initiating_agent.id)
+    classifier = AgentChooser(responding_agent_id=responding_agent.id)
     orchestrator = AgentSquad(
         classifier=classifier,
         options=AgentSquadConfig(
@@ -112,128 +112,126 @@ async def main(args):
         orchestrator.add_agent(agent)
 
     # 3. Main conversational loop
-    
-    next_request = initiating_agent.agent_config['messageToUseWhenInitiatingConversation']
-
-    # Manually save the initiating message to the chat history
-    await orchestrator.storage.save_chat_message(
-        user_id,
-        session_id,
-        "session",
-        ConversationMessage(
-            role=ParticipantRole.USER.value,
-            content=[{'text': f"{initiating_agent.id}: {next_request}"}]
-        )
-    )
-    
-    max_turns = 18
+    max_turns = 3 #was 18
     turn_count = 0
     conversation_ended = False
+    next_request = None
+    ui_history = []
+    chat_history = []
 
+    # next_request = responding_agent.agent_config['messageToUseWhenInitiatingConversation']
+
+    # # Manually save the initiating message to the chat history
+    # await orchestrator.storage.save_chat_message(
+    #     user_id,
+    #     session_id,
+    #     responding_agent.id,
+    #     ConversationMessage(
+    #         role=ParticipantRole.USER.value,
+    #         content=[{'text': f"{responding_agent.id}: {next_request}"}]
+    #     )
+    # )
+    
     while not conversation_ended and turn_count < max_turns:
         turn_count += 1
         print(f"\n======= Turn {turn_count} =======")
-        current_agent = classifier.peek_next_agent()
-        print(f"--- Agent receiving message: {current_agent.id} ---")
+        # swap agent roles
+        temp = responding_agent
+        temp_id = responding_agent_id
+        responding_agent = sending_agent
+        responding_agent_id = sending_agent_id
+        sending_agent = temp
+        sending_agent_id = temp_id
 
-        print("***************CHAT HISTORY FROM CONSISTENT POV OF INITIATING AGENT:")
-        # Fetch the real chat history from the orchestrator's storage
-        chat_history = await orchestrator.storage.fetch_chat(user_id, session_id, initiating_agent.id)
-        
-        # Update UI
-        ui_history = []
-        for message in chat_history:
-            agent_id = initiating_agent_id if message.role == ParticipantRole.ASSISTANT.value else other_agent_id
-            raw_content = ""
-            if message.content and isinstance(message.content, list) and len(message.content) > 0 and message.content[0].get('text'):
-                raw_content = message.content[0]['text']
-            
-            # Strip the agent ID prefix if it exists
-            if raw_content.startswith(f"{initiating_agent_id}: "):
-                raw_content = raw_content.replace(f"{initiating_agent_id}: ", "", 1)
+        print(f"--- Sending agent: {sending_agent.id}, Responding agent: {responding_agent.id} ---")
 
-            # Extract tool calls and the clean message content
-            tool_calls = re.findall(r'\[TOOL_CALL\](.*?)\[/TOOL_CALL\]', raw_content)
-            clean_content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', raw_content).strip()
-
-            # Add tool call messages to the history
-            for tool_name in tool_calls:
-                ui_history.append({
-                    'role': message.role,
-                    'agent_id': agent_id,
-                    'type': 'tool',
-                    'content': f"Running tool: {tool_name}"
-                })
-            
-            # Add the clean conversational message to the history
-            if clean_content:
-                ui_history.append({
-                    'role': message.role,
-                    'agent_id': agent_id,
-                    'type': 'message',
-                    'content': clean_content
-                })
-        update_chat_history(ui_history)
-
-        index = 1
-
-
-        for message in chat_history:
-            msg = json.dumps(message.content[0]['text'])
-            msg = msg.replace('\n',' ')[0:MAX_LEN] 
-            print(f"  {index}. Role: {message.role}, Content: {msg}")
-            index = index + 1
-        print("***************END CHAT HISTORY")
-
-        # create dialog file
-        with open(scenario_path_text, "w") as f:
-            index = 0
-            for message in chat_history:
-                if index % 2 == 0:
-                    f.write("\n\n(voice: Charles)\n\n")
-                else:
-                    f.write("\n\n(voice: Victoria)\n\n")
-                message_content = message.content[0]["text"].replace('\n',' ')
-                length = len(message_content)
-                if length > MAX_LEN:
-                    message_content, _ = split_at_nearest_sentence(message_content, MAX_LEN)
-                # for now, suppress the TOOL_CALLs:
-                message_content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', message_content)
-                message_content = re.sub(r'\n+', ' ', message_content)
-                f.write(message_content)
-                if length > MAX_LEN:
-                    f.write(". Et cetera.")
-                index += 1
-
-        # The system prompt is now set in the agent factory.
         # The "next_request" variable holds the conversational message.
-        classifier_result = ClassifierResult(selected_agent=current_agent, confidence=1.0)
-        response = await orchestrator.agent_process_request(
-            next_request,
+        classifier_result = ClassifierResult(selected_agent=responding_agent, confidence=1.0)
+        if turn_count == 1:
+            response_text = sending_agent.agent_config['messageToUseWhenInitiatingConversation']
+        else:
+            response = await orchestrator.agent_process_request(
+                next_request,
+                user_id,
+                session_id,
+                classifier_result,
+                additional_params={
+                    "scenario": orchestrator.scenario_data,
+                    "agent_config": responding_agent.agent_config
+                }
+            response_text = response.output.content[0]['text']
+            print(f"\n--- Response from {response.metadata.agent_name}: {response_text} ---")
+        )
+        # Save message to history
+        await orchestrator.storage.save_chat_message(
             user_id,
             session_id,
-            classifier_result,
-            additional_params={
-                "scenario": orchestrator.scenario_data,
-                "agent_config": current_agent.agent_config
-            }
+            responding_agent.id,
+            ConversationMessage(
+                role=ParticipantRole.USER.value,
+                content=[{'text': f"{responding_agent.id}: {response_text}"}]
+            )
         )
+        # Strip the agent ID prefix if it exists
+        if raw_content.startswith(f"{sending_agent_id}: "):
+            raw_content = raw_content.replace(f"{sending_agent_id}: ", "", 1)
+        # Remover tool calls and the clean message content
+        tool_calls = re.findall(r'\[TOOL_CALL\](.*?)\[/TOOL_CALL\]', raw_content)
+        clean_content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', raw_content).strip()
+        # Add tool call messages to the UI history
+        for tool_name in tool_calls:
+            ui_history.append({
+                'role': message.role,
+                'agent_id': agent_id,
+                'type': 'tool',
+                'content': f"Running tool: {tool_name}",
+                'sending_agent_id': sending_agent_id
+            })
+        # Add the clean conversational message to the history
+        if clean_content:
+            msg_data = {
+                'role': message.role,
+                'agent_id': agent_id,
+                'type': 'message',
+                'content': clean_content,
+                'responding_agent_id': responding_agent_id
+            }
+            print("MESSAGE DATA", msg_data)
+            # Generate audio IMMEDIATELY and add URL
+            speaker_num = len([m for m in ui_history if m.get('type') == 'message'])
+            speaker_id = f"speaker{(speaker_num % 2) + 1}"
+            print(f"Generating audio for message {speaker_num + 1}: speaker={speaker_id}")
+            audio_url = tts_service.get_audio_url(clean_content, speaker_id)
+            if audio_url:
+                msg_data['audio_url'] = audio_url
+                print(f"  -> Audio generated: {audio_url}")
+            else:
+                print(f"  -> Audio generation failed")
+            
+            ui_history.append(msg_data)
         
-        print(f"\n--- Response from {response.metadata.agent_name} ---")
+        # Count how many audio messages we're about to send
+        audio_messages = len([m for m in ui_history if m.get('type') == 'message' and m.get('audio_url')])
+        
+        update_chat_history(ui_history)
+        
+        # Wait for frontend to finish playing the audio before continuing
+        if audio_messages > 0:
+            print(f"Waiting for audio playback to complete...")
+            wait_for_audio_playback()
+            print(f"Audio playback complete, continuing to next turn")
 
-        if response.streaming:
-            full_response = ""
-            async for chunk in response:
-                full_response += chunk
-            response_text = full_response
-        else:
-            response_text = response.output.content[0]['text']
+
+        
+        
+
+
         
         print("response_text = ", response_text)
 
         # The orchestrator automatically saves the turn to the speaker's history.
         # We need to manually save it to the listener's history with roles flipped.
-        agent_listening = next((agent for agent in agents if agent.id != current_agent.id), None)
+        agent_listening = next((agent for agent in agents if agent.id != responding_agent.id), None)
         if agent_listening:
             # The user message for the speaker is the current `next_request`
             user_message = ConversationMessage(role=ParticipantRole.USER.value, content=[{'text': next_request}])
@@ -253,8 +251,8 @@ async def main(args):
         # The next request for the other agent is the raw response text
         next_request = response_text
         
-        # Advance to the next agent
-        classifier.advance_turn()
+        # # Advance to the next agent
+        # classifier.advance_turn()
 
         if 'toolUse' in response_text:
             print(f"WARNING: A TOOL USE REQUEST HAS SURFACED IN THE CONVERSATION: {response_text}")
@@ -263,18 +261,20 @@ async def main(args):
         if "END OF CONVERSATION" in response_text:
             conversation_ended = True
             print("\n--- Conversation has ended ---")
+        else:
+            print("\n--- END OF TURN ---")
 
     # Perform one final UI update to ensure the last message is displayed
-    chat_history = await orchestrator.storage.fetch_chat(user_id, session_id, initiating_agent.id)
+    chat_history = await orchestrator.storage.fetch_chat(user_id, session_id, responding_agent.id)
     ui_history = []
     for message in chat_history:
-        agent_id = initiating_agent_id if message.role == ParticipantRole.ASSISTANT.value else other_agent_id
+        agent_id = responding_agent_id if message.role == ParticipantRole.ASSISTANT.value else sending_agent_id
         raw_content = ""
         if message.content and isinstance(message.content, list) and len(message.content) > 0 and message.content[0].get('text'):
             raw_content = message.content[0]['text']
 
-        if raw_content.startswith(f"{initiating_agent_id}: "):
-            raw_content = raw_content.replace(f"{initiating_agent_id}: ", "", 1)
+        if raw_content.startswith(f"{responding_agent_id}: "):
+            raw_content = raw_content.replace(f"{responding_agent_id}: ", "", 1)
 
         tool_calls = re.findall(r'\[TOOL_CALL\](.*?)\[/TOOL_CALL\]', raw_content)
         clean_content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', raw_content).strip()
