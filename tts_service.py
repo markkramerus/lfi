@@ -19,11 +19,11 @@ class TTSService:
         self.worker_thread = threading.Thread(target=self._process_queue, daemon=True)
         self.worker_thread.start()
         
-        # Voice configurations for different speakers
+        # Voice configurations for different speakers   see https://gtts.readthedocs.io/en/latest/module.html
         # We'll use different languages/accents to differentiate voices
         self.voice_configs = {
-            "speaker1": {"lang": "en", "tld": "com", "slow": False},  # US English
-            "speaker2": {"lang": "en", "tld": "co.uk", "slow": False}  # UK English
+            "speaker1": {"lang": "en", "tld": "ie", "slow": False}, 
+            "speaker2": {"lang": "en", "tld": "com.au", "slow": False}  
         }
     
     def _get_audio_filename(self, text, speaker_id):

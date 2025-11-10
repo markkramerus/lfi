@@ -11,9 +11,6 @@
         <h2>Conversational Interoperability</h2>
         <h2 id="scenario-title"></h2>
         <h3 id="scenario-description"></h3>
-        <button id="start-audio-btn" style="margin-top: 10px; padding: 10px 20px; font-size: 16px; display: none;">
-            ▶️ Start Audio Playback
-        </button>
     </div>
     <div class="chat-container" id="chat-container">
         <!-- Chat messages will be inserted here by JavaScript -->
@@ -27,26 +24,13 @@
             document.getElementById('scenario-description').textContent = info.description;
         }
 
-        let currentlyPlayingAudio = null; // Track currently playing audio element
-        let pendingMessages = []; // Queue for messages waiting to display
         let displayedMessageCount = 0;
+        let chatMessageCount = 0;
         let isProcessingQueue = false;
-        let userStartedAudio = false;
-        let waitingForUserStart = false;
 
         async function fetchChatHistory() {
             const response = await fetch('/history');
             const chatHistory = await response.json();
-            
-            // Don't interrupt if audio is playing - queue the update instead
-            if (currentlyPlayingAudio && !currentlyPlayingAudio.paused) {
-                // Store pending messages
-                if (chatHistory.length > displayedMessageCount) {
-                    pendingMessages = chatHistory.slice(displayedMessageCount);
-                }
-                return;
-            }
-            
             const chatContainer = document.getElementById('chat-container');
             
             // Check if this is truly new content
@@ -73,20 +57,23 @@
             while (displayedMessageCount < chatHistory.length) {
                 const i = displayedMessageCount;
                 const message = chatHistory[i];
-                const side = message.role === 'assistant' ? 'left' : 'right';
                 const messageElement = document.createElement('div');
 
                 if (message.type === 'tool') {
+                    // Tool messages go on opposite side of the last chat bubble
+                    const side = chatMessageCount === 0 ? 'right' : ((chatMessageCount - 1) % 2 === 0 ? 'right' : 'left');
                     messageElement.classList.add('tool-call', side);
                     messageElement.textContent = message.content;
                     chatContainer.appendChild(messageElement);
                     displayedMessageCount++;
                 } else {
+                    // Chat bubbles alternate sides
+                    const side = chatMessageCount % 2 === 0 ? 'left' : 'right';
                     messageElement.classList.add('chat-balloon', side);
 
                     const agentName = document.createElement('div');
                     agentName.classList.add('agent-name');
-                    agentName.textContent = message.agent_id;
+                    agentName.textContent = message.responding_agent_id;
 
                     const messageContent = document.createElement('div');
                     messageContent.classList.add('message-content');
@@ -94,7 +81,7 @@
 
                     messageElement.appendChild(agentName);
                     messageElement.appendChild(messageContent);
-
+                    
                     // Add audio player if audio URL is available
                     if (message.audio_url) {
                         const audioPlayer = document.createElement('audio');
@@ -105,101 +92,12 @@
                         audioPlayer.playbackRate = 1.5; // Set default speed to 1.5x
                         
                         messageElement.appendChild(audioPlayer);
-                        chatContainer.appendChild(messageElement);
-                        
-                        // Auto-scroll
-                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                        
-                        // Increment BEFORE playing to avoid re-processing
-                        displayedMessageCount++;
-                        
-                        // Wait for audio metadata to load
-                        console.log(`Message ${i + 1}: Waiting for audio to load from ${message.audio_url}`);
-                        await new Promise((resolve) => {
-                            if (audioPlayer.readyState >= 2) {
-                                // Already loaded
-                                console.log(`Message ${i + 1}: Audio already loaded, duration: ${audioPlayer.duration}s`);
-                                resolve();
-                            } else {
-                                audioPlayer.addEventListener('loadedmetadata', () => {
-                                    console.log(`Message ${i + 1}: Audio metadata loaded, duration: ${audioPlayer.duration}s`);
-                                    resolve();
-                                }, { once: true });
-                                audioPlayer.addEventListener('error', (e) => {
-                                    console.log(`Message ${i + 1}: Audio load error:`, e);
-                                    resolve(); // Continue anyway
-                                }, { once: true });
-                            }
-                        });
-                        
-                        // Play audio and wait for completion
-                        currentlyPlayingAudio = audioPlayer;
-                        
-                        console.log(`Message ${i + 1}: Starting playback at 1.5x speed`);
-                        
-                        try {
-                            await new Promise((resolve) => {
-                                let resolved = false;
-                                
-                                const doResolve = () => {
-                                    if (!resolved) {
-                                        resolved = true;
-                                        console.log(`Audio ended for message ${i + 1}`);
-                                        resolve();
-                                    }
-                                };
-                                
-                                // Set up event listeners FIRST
-                                audioPlayer.addEventListener('ended', doResolve, { once: true });
-                                audioPlayer.addEventListener('error', (err) => {
-                                    console.log('Audio error:', err);
-                                    doResolve();
-                                }, { once: true });
-                                
-                                // Try to play
-                                audioPlayer.play().then(() => {
-                                    console.log(`Successfully started playing message ${i + 1}`);
-                                }).catch(e => {
-                                    console.log('Auto-play prevented for message', i + 1, e);
-                                    
-                                    // For first message, show start button and WAIT
-                                    if (i === 0 && !userStartedAudio) {
-                                        waitingForUserStart = true;
-                                        const startBtn = document.getElementById('start-audio-btn');
-                                        startBtn.style.display = 'inline-block';
-                                        
-                                        startBtn.onclick = () => {
-                                            userStartedAudio = true;
-                                            waitingForUserStart = false;
-                                            startBtn.style.display = 'none';
-                                            
-                                            audioPlayer.play().then(() => {
-                                                console.log('User initiated playback - audio will play until ended');
-                                                // Don't resolve here! Let the 'ended' event handle it
-                                            }).catch(err => {
-                                                console.log('Play failed even after user interaction:', err);
-                                                doResolve();
-                                            });
-                                        };
-                                    } else {
-                                        // This shouldn't happen for messages after the first, but handle it
-                                        console.log('Auto-play failed for non-first message - this is unexpected');
-                                        doResolve();
-                                    }
-                                });
-                            });
-                        } catch (e) {
-                            console.log('Audio playback error:', e);
-                        }
-                        
-                        currentlyPlayingAudio = null;
-                        console.log(`Finished playing message ${i + 1}`);
-                        
-                    } else {
-                        // No audio, just display
-                        chatContainer.appendChild(messageElement);
-                        displayedMessageCount++;
                     }
+                    
+                    // Append message to container
+                    chatContainer.appendChild(messageElement);
+                    displayedMessageCount++;
+                    chatMessageCount++;
                 }
                 
                 // Auto-scroll after each message
@@ -207,14 +105,6 @@
             }
             
             isProcessingQueue = false;
-            
-            // Signal backend that all audio playback is complete
-            try {
-                await fetch('/audio_complete', { method: 'POST' });
-                console.log('Notified backend that audio playback is complete');
-            } catch (e) {
-                console.log('Failed to notify backend:', e);
-            }
         }
 
         // Poll for scenario info until it's available
