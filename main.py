@@ -8,7 +8,7 @@ import webbrowser
 import re
 import time
 from dotenv import load_dotenv
-from app import start_flask_app, update_chat_history, update_scenario_info
+from app import start_flask_app, update_chat_history, update_scenario_info, get_pause_state
 from agent_squad.orchestrator import AgentSquad, AgentSquadConfig
 from agent_squad.types import ConversationMessage, ParticipantRole
 from agent_squad.classifiers import ClassifierResult
@@ -131,6 +131,10 @@ async def main(args):
     conversation_ended = False
 
     while not conversation_ended and turn_count < max_turns:
+        # Check for pause state before proceeding with next turn
+        while get_pause_state():
+            await asyncio.sleep(0.5)  # Check every 500ms
+        
         turn_count += 1
         print(f"\n======= Turn {turn_count} =======")
         current_agent = classifier.peek_next_agent()

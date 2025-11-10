@@ -1,9 +1,10 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import threading
 
 app = Flask(__name__)
 chat_history = []
 scenario_info = {}
+is_paused = False
 
 def update_chat_history(new_history):
     global chat_history
@@ -24,6 +25,18 @@ def history():
 @app.route('/info')
 def info():
     return jsonify(scenario_info)
+
+@app.route('/pause_state', methods=['GET', 'POST'])
+def pause_state():
+    global is_paused
+    if request.method == 'POST':
+        data = request.get_json()
+        is_paused = data.get('paused', False)
+        return jsonify({'paused': is_paused})
+    return jsonify({'paused': is_paused})
+
+def get_pause_state():
+    return is_paused
 
 def run_app():
     app.run(port=5001)

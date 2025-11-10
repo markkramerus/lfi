@@ -11,12 +11,46 @@
         <h2>Conversational Interoperability</h2>
         <h2 id="scenario-title"></h2>
         <h3 id="scenario-description"></h3>
+        <button id="pause-button" onclick="togglePause()">Pause</button>
     </div>
     <div class="chat-container" id="chat-container">
         <!-- Chat messages will be inserted here by JavaScript -->
     </div>
 
     <script>
+        let isPaused = false;
+
+        async function togglePause() {
+            isPaused = !isPaused;
+            const response = await fetch('/pause_state', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ paused: isPaused })
+            });
+            const data = await response.json();
+            updatePauseButton(data.paused);
+        }
+
+        async function fetchPauseState() {
+            const response = await fetch('/pause_state');
+            const data = await response.json();
+            isPaused = data.paused;
+            updatePauseButton(isPaused);
+        }
+
+        function updatePauseButton(paused) {
+            const button = document.getElementById('pause-button');
+            if (paused) {
+                button.textContent = 'Run';
+                button.classList.add('paused');
+            } else {
+                button.textContent = 'Pause';
+                button.classList.remove('paused');
+            }
+        }
+
         async function fetchScenarioInfo() {
             const response = await fetch('/info');
             const info = await response.json();
@@ -88,11 +122,15 @@
             }
         }, 500); // Check every 500ms
 
+        // Fetch pause state every 500ms
+        setInterval(fetchPauseState, 500);
+
         // Fetch history every 2 seconds
         setInterval(fetchChatHistory, 2000);
 
         // Initial fetch
         fetchChatHistory();
+        fetchPauseState();
     </script>
 </body>
 </html>
