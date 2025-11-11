@@ -47,9 +47,9 @@ def split_at_nearest_sentence(text, target_index):
     second_part = text[split_index:].strip()  # .strip() removes leading whitespace
     return first_part, second_part
 
-# import llm_cache
-# # Enable automatic caching for all LLM calls
-# llm_cache.enable_auto_caching()
+import llm_cache
+# Enable automatic caching for all LLM calls
+llm_cache.enable_auto_caching()
 
 # Suppress httpx info logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -113,7 +113,7 @@ async def main(args):
         orchestrator.add_agent(agent)
 
     # 3. Main conversational loop
-    max_turns = 3
+    max_turns = 18
     turn_count = 0
     conversation_ended = False
     next_request = None
