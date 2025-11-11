@@ -112,7 +112,7 @@ async def tool_surrogate_func(*args, **kwargs):
     # The response from the LLM is a ConversationMessage, e.g., (role="assistant", content=[{"type": "text", "text": "Error: Missing scenario or agent_config"}])
     trimmed_response = strip_fences(response.content[0].get('text', 'Error: No text included in the tool agent response.'))
     newline_char = '\n'
-    print(f"--- Response from surrogate tool (trimmed): {' '.join(trimmed_response[0:100].replace(newline_char,' ').split())}")
+    #print(f"--- Response from surrogate tool (trimmed): {' '.join(trimmed_response[0:100].replace(newline_char,' ').split())}")
     
     # Check if the tool is meant to end the conversation
     if current_tool_config.get("endsConversation"):

@@ -1,5 +1,7 @@
 from flask import Flask, render_template, jsonify, request
 import threading
+import signal
+import os
 from tts_service import tts_service
 
 app = Flask(__name__)
@@ -7,6 +9,7 @@ chat_history = []
 scenario_info = {}
 audio_playback_complete = threading.Event()
 audio_playback_complete.set()  # Initially ready
+flask_thread = None
 
 def update_chat_history(new_history):
     global chat_history
@@ -43,9 +46,17 @@ def wait_for_audio_playback():
     audio_playback_complete.clear()  # Reset for next message
 
 def run_app():
-    app.run(port=5001)
+    app.run(port=5001, use_reloader=False)
 
 def start_flask_app():
+    global flask_thread
     flask_thread = threading.Thread(target=run_app)
-    flask_thread.daemon = True
+    flask_thread.daemon = True  # Daemon thread will exit when main thread exits
     flask_thread.start()
+
+def shutdown_flask_app():
+    """Shutdown the Flask server gracefully"""
+    # Send SIGINT to trigger Flask shutdown
+    if flask_thread and flask_thread.is_alive():
+        # Flask will shut down when the main thread exits (daemon thread)
+        pass

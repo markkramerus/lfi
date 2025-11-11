@@ -4,6 +4,7 @@ Uses gTTS for simple TTS generation with different voices for each speaker.
 """
 import os
 import hashlib
+import subprocess
 from gtts import gTTS
 from pathlib import Path
 import threading
@@ -23,8 +24,81 @@ class TTSService:
         # We'll use different languages/accents to differentiate voices
         self.voice_configs = {
             "speaker1": {"lang": "en", "tld": "ie", "slow": False}, 
-            "speaker2": {"lang": "en", "tld": "com.au", "slow": False}  
+            "speaker2": {"lang": "en", "tld": "co.uk", "slow": False}
         }
+    
+    def _get_sample_rate(self, filepath):
+        """Detect the sample rate of an audio file using ffprobe."""
+        try:
+            cmd = [
+                'ffprobe',
+                '-v', 'error',
+                '-show_entries', 'stream=sample_rate',
+                '-of', 'default=noprint_wrappers=1:nokey=1',
+                str(filepath)
+            ]
+            result = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+                text=True
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return int(result.stdout.strip())
+            return 24000  # Default fallback
+        except Exception as e:
+            print(f"Error detecting sample rate: {e}")
+            return 24000  # Default fallback
+    
+    def _apply_pitch_shift(self, filepath, pitch_factor=0.80, tempo_factor=1.15):
+        """
+        Apply pitch shifting and tempo adjustment to an audio file using ffmpeg.
+        pitch_factor < 1.0 lowers the pitch (more masculine)
+        pitch_factor > 1.0 raises the pitch (more feminine)
+        tempo_factor > 1.0 speeds up playback, < 1.0 slows it down
+        """
+        try:
+            temp_output = filepath.with_suffix('.pitched.mp3')
+            
+            # Detect the actual sample rate of the input file
+            sample_rate = self._get_sample_rate(filepath)
+            print(f"Detected sample rate: {sample_rate} Hz")
+            
+            # Use ffmpeg to shift pitch and adjust tempo
+            # asetrate changes the sample rate (lower = deeper pitch)
+            # atempo adjusts playback speed without affecting pitch
+            # aresample maintains the original sample rate
+            cmd = [
+                'ffmpeg',
+                '-i', str(filepath),
+                '-af', f'asetrate={sample_rate}*{pitch_factor},atempo={tempo_factor},aresample={sample_rate}',
+                '-y',  # Overwrite output file
+                str(temp_output)
+            ]
+            
+            # Run ffmpeg with suppressed output
+            result = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+            )
+            
+            if result.returncode == 0 and temp_output.exists():
+                # Replace original with pitched version
+                temp_output.replace(filepath)
+                print(f"Applied pitch shift (factor={pitch_factor}) to {filepath.name}")
+                return True
+            else:
+                print(f"ffmpeg pitch shift failed for {filepath.name}")
+                if temp_output.exists():
+                    temp_output.unlink()
+                return False
+                
+        except Exception as e:
+            print(f"Error applying pitch shift to {filepath.name}: {e}")
+            return False
     
     def _get_audio_filename(self, text, speaker_id):
         """Generate a unique filename based on text and speaker."""
@@ -64,7 +138,12 @@ class TTSService:
             # Verify file was created and has content
             if temp_filepath.exists() and temp_filepath.stat().st_size > 0:
                 temp_filepath.rename(filepath)
-                print(f"Generated audio: {filename} ({filepath.stat().st_size} bytes)")
+                #print(f"Generated audio: {filename} ({filepath.stat().st_size} bytes)")
+                
+                # Apply pitch shift for speaker2 to make voice more masculine and faster
+                if speaker_id == "speaker2":
+                    self._apply_pitch_shift(filepath, pitch_factor=0.75, tempo_factor=1.5)
+                
                 return filename
             else:
                 print(f"Error: Generated empty audio file for: {text[:50]}...")

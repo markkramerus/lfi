@@ -7,6 +7,7 @@ import logging
 import webbrowser
 import re
 import time
+import signal
 from dotenv import load_dotenv
 from app import start_flask_app, update_chat_history, update_scenario_info, wait_for_audio_playback
 from tts_service import tts_service
@@ -46,9 +47,9 @@ def split_at_nearest_sentence(text, target_index):
     second_part = text[split_index:].strip()  # .strip() removes leading whitespace
     return first_part, second_part
 
-import llm_cache
-# Enable automatic caching for all LLM calls
-llm_cache.enable_auto_caching()
+# import llm_cache
+# # Enable automatic caching for all LLM calls
+# llm_cache.enable_auto_caching()
 
 # Suppress httpx info logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -112,7 +113,7 @@ async def main(args):
         orchestrator.add_agent(agent)
 
     # 3. Main conversational loop
-    max_turns = 2 #was 18
+    max_turns = 3
     turn_count = 0
     conversation_ended = False
     next_request = None
@@ -149,7 +150,7 @@ async def main(args):
                 }
             )
             response_text = response.output.content[0]['text']
-            print(f"\n--- Response from {response.metadata.agent_name}: {response_text} ---")
+            #print(f"\n--- Response from {response.metadata.agent_name}: {response_text} ---")
         # Save message to history
         role = ParticipantRole.USER.value
         await orchestrator.storage.save_chat_message(
@@ -258,8 +259,35 @@ async def main(args):
     if not conversation_ended:
         print("\n--- Maximum turns reached, ending conversation ---")
 
-    # Give the UI a moment to fetch the final update before the script exits
+    # Give the UI a moment to fetch the final update
     time.sleep(3)
 
+def signal_handler(sig, frame):
+    """Handle Ctrl+C gracefully"""
+    print("\n\nShutting down gracefully...")
+    print("Flask server will stop automatically.")
+    sys.exit(0)
+
 if __name__ == "__main__":
+    # Set up signal handler for graceful shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+    
     asyncio.run(main(sys.argv))
+    
+    # After async conversation completes, keep the server alive
+    print("\n" + "="*60)
+    print("CONVERSATION COMPLETE")
+    print("="*60)
+    print("The Flask server is still running to serve audio files.")
+    print("You can continue playing audio in your browser.")
+    print("Press Ctrl+C to stop the server when done.")
+    print("="*60 + "\n")
+    
+    # Keep the main thread alive so the Flask server can continue serving files
+    # The Flask thread is a daemon thread, so it will exit when this loop exits
+    try:
+        while True:
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        # This will be caught by the signal handler
+        pass
