@@ -1,3 +1,18 @@
+
+
+##############################
+#        PARAMETERS          # 
+MAX_TURNS = 18
+CLEAR_CACHE = False          # WARNING: This clears the entire cache, not just the cache related to this use case
+CACHE_RESULT = True
+USE_GOOGLE_CLOUD_TTS = True  # Text-to-speech: if both are false, no TTS is generated
+USE_GTTS = False
+##############################
+
+
+# IMPORTANT: Import patch first to fix top_p issue with Claude Haiku 4.5
+import anthropic_top_p_patch
+
 import asyncio
 import os
 import sys
@@ -9,15 +24,13 @@ import re
 import time
 import signal
 from dotenv import load_dotenv
-from app import start_flask_app, update_chat_history, update_scenario_info, wait_for_audio_playback
-from tts_service import tts_service
+from app import start_flask_app, update_chat_history, update_scenario_info, wait_for_audio_playback, is_execution_paused
 from agent_squad.orchestrator import AgentSquad, AgentSquadConfig
 from agent_squad.types import ConversationMessage, ParticipantRole
 from agent_squad.classifiers import ClassifierResult
 from agent_chooser import AgentChooser
 from agent_factory import create_agents_from_scenario
 
-MAX_LEN = 500
 
 def split_at_nearest_sentence(text, target_index):
     """Splits a string at the word boundary nearest to the target index."""
@@ -48,8 +61,12 @@ def split_at_nearest_sentence(text, target_index):
     return first_part, second_part
 
 import llm_cache
+if CLEAR_CACHE: # wipe existing cache values
+    cache = llm_cache.get_cache()
+    cache.clear()
+if CACHE_RESULT:
 # Enable automatic caching for all LLM calls
-llm_cache.enable_auto_caching()
+    llm_cache.enable_auto_caching()
 
 # Suppress httpx info logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -58,7 +75,16 @@ logging.getLogger("werkzeug").setLevel(logging.WARNING)
 # Load environment variables
 load_dotenv()
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-MAX_HISTORY = 10000
+
+# Initialize the appropriate TTS service
+if USE_GOOGLE_CLOUD_TTS:
+    from google_cloud_tts_service import GoogleCloudTTSService
+    tts_service = GoogleCloudTTSService()
+elif USE_GTTS:
+    from tts_service import TTSService
+    tts_service = TTSService()
+else:
+    tts_service = None
 
 async def main(args):
     """Main function to demonstrate secure, agent-contained tool use."""
@@ -113,12 +139,11 @@ async def main(args):
         orchestrator.add_agent(agent)
 
     # 3. Main conversational loop
-    max_turns = 18
+    max_turns = MAX_TURNS
     turn_count = 0
     conversation_ended = False
     next_request = None
     ui_history = []
-    chat_history = []
     
     while not conversation_ended and turn_count < max_turns:
         turn_count += 1
@@ -150,24 +175,23 @@ async def main(args):
                 }
             )
             response_text = response.output.content[0]['text']
-            #print(f"\n--- Response from {response.metadata.agent_name}: {response_text} ---")
+        #print(f"\n--- Raw response: {response_text} ---")
+        tool_calls = re.findall(r'\[TOOL_CALL\](.*?)\[/TOOL_CALL\]', response_text)
+        # remove tool calls since they are private
+        clean_content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', response_text).strip()
+        full_response = f"TURN {turn_count}: Agent {responding_agent.id} said: {clean_content}"
+        print("--- FULL RESPONSE ADDED TO HISTORY: ", full_response[0:200])
         # Save message to history
-        role = ParticipantRole.USER.value
         await orchestrator.storage.save_chat_message(
             user_id,
             session_id,
             responding_agent.id,
             ConversationMessage(
-                role=role,
-                content=[{'text': f"{responding_agent.id}: {response_text}"}]
+                role=ParticipantRole.ASSISTANT.value,
+                content=[{'text': full_response}]
             )
         )
-        # Strip the agent ID prefix if it exists
-        if response_text.startswith(f"{sending_agent_id}: "):
-            response_text = response_text.replace(f"{sending_agent_id}: ", "", 1)
-        # Remover tool calls and the clean message content
-        tool_calls = re.findall(r'\[TOOL_CALL\](.*?)\[/TOOL_CALL\]', response_text)
-        clean_content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', response_text).strip()
+
         # Add tool call messages to the UI history
         for tool_name in tool_calls:
             ui_history.append({
@@ -176,7 +200,7 @@ async def main(args):
                 'type': 'tool',
                 'content': f"Running tool: {tool_name}",
             })
-        # Add the clean conversational message to the history
+        # Add the clean conversational message to the UI history
         if clean_content:
             msg_data = {
                 'sending_agent_id': sending_agent_id,
@@ -184,23 +208,26 @@ async def main(args):
                 'type': 'message',
                 'content': clean_content,
             }
-            #print("MESSAGE DATA", msg_data)
-            # Generate audio IMMEDIATELY and add URL
-            speaker_num = len([m for m in ui_history if m.get('type') == 'message'])
-            speaker_id = f"speaker{(speaker_num % 2) + 1}"
-            print(f"Generating audio for message {speaker_num + 1}: speaker={speaker_id}")
-            audio_url = tts_service.get_audio_url(clean_content, speaker_id)
-            if audio_url:
-                msg_data['audio_url'] = audio_url
-                print(f"  -> Audio generated: {audio_url}")
-            else:
-                print(f"  -> Audio generation failed")
+
+            if tts_service is not None:
+                # Remove markdown formatting characters (# and *) for TTS
+                tts_content = clean_content.replace('#', '').replace('*', '')
+                speaker_num = len([m for m in ui_history if m.get('type') == 'message'])
+                speaker_id = f"speaker{(speaker_num % 2) + 1}"
+                print(f"Generating audio for message {speaker_num + 1}: speaker={speaker_id}")
+                audio_url = tts_service.get_audio_url(tts_content, speaker_id)
+                if audio_url:
+                    msg_data['audio_url'] = audio_url
+                    print(f"  -> Audio generated: {audio_url}")
+                else:
+                    print(f"  -> Audio generation failed")
             
             ui_history.append(msg_data)
         
         # Count how many audio messages we're about to send
         audio_messages = len([m for m in ui_history if m.get('type') == 'message' and m.get('audio_url')])
         
+        print(f"--- UI_HISTORY length = {len(ui_history)}")
         update_chat_history(ui_history)
 
         # The next request for the other agent is the raw response text
@@ -215,46 +242,51 @@ async def main(args):
             print("\n--- Conversation has ended ---")
         else:
             print("\n--- END OF TURN ---")
-
-    # Perform one final UI update to ensure the last message is displayed
-    chat_history = await orchestrator.storage.fetch_chat(user_id, session_id, responding_agent.id)
-    ui_history = []
-    message_count = 0
-    for message in chat_history:
-        agent_id = responding_agent_id if message.role == ParticipantRole.ASSISTANT.value else sending_agent_id
-        raw_content = ""
-        if message.content and isinstance(message.content, list) and len(message.content) > 0 and message.content[0].get('text'):
-            raw_content = message.content[0]['text']
-
-        if raw_content.startswith(f"{responding_agent_id}: "):
-            raw_content = raw_content.replace(f"{responding_agent_id}: ", "", 1)
-
-        tool_calls = re.findall(r'\[TOOL_CALL\](.*?)\[/TOOL_CALL\]', raw_content)
-        clean_content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', raw_content).strip()
-
-        for tool_name in tool_calls:
-            ui_history.append({
-                'role': message.role,
-                'agent_id': agent_id,
-                'type': 'tool',
-                'content': f"Running tool: {tool_name}"
-            })
         
-        if clean_content:
-            msg_data = {
-                'role': message.role,
-                'agent_id': agent_id,
-                'type': 'message',
-                'content': clean_content
-            }
-            # Generate audio URL for this message
-            speaker_id = f"speaker{(message_count % 2) + 1}"
-            audio_url = tts_service.get_audio_url(clean_content, speaker_id)
-            if audio_url:
-                msg_data['audio_url'] = audio_url
-            message_count += 1
-            ui_history.append(msg_data)
-    update_chat_history(ui_history)
+        # Check pause state before continuing to next turn
+        while is_execution_paused() and not conversation_ended:
+            print("⏸ Execution paused... (waiting for play)")
+            time.sleep(0.5)
+
+    # # Perform one final UI update to ensure the last message is displayed
+    # #chat_history = await orchestrator.storage.fetch_chat(user_id, session_id, responding_agent.id)
+    # ui_history = []
+    # message_count = 0
+    # for message in chat_history:
+    #     agent_id = responding_agent_id if message.role == ParticipantRole.ASSISTANT.value else sending_agent_id
+    #     raw_content = ""
+    #     if message.content and isinstance(message.content, list) and len(message.content) > 0 and message.content[0].get('text'):
+    #         raw_content = message.content[0]['text']
+
+    #     if raw_content.startswith(f"{responding_agent_id}: "):
+    #         raw_content = raw_content.replace(f"{responding_agent_id}: ", "", 1)
+
+    #     tool_calls = re.findall(r'\[TOOL_CALL\](.*?)\[/TOOL_CALL\]', raw_content)
+    #     clean_content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', raw_content).strip()
+
+    #     for tool_name in tool_calls:
+    #         ui_history.append({
+    #             'role': message.role,
+    #             'agent_id': agent_id,
+    #             'type': 'tool',
+    #             'content': f"Running tool: {tool_name}"
+    #         })
+        
+    #     if clean_content:
+    #         msg_data = {
+    #             'role': message.role,
+    #             'agent_id': agent_id,
+    #             'type': 'message',
+    #             'content': clean_content
+    #         }
+    #         # Generate audio URL for this message
+    #         speaker_id = f"speaker{(message_count % 2) + 1}"
+    #         audio_url = tts_service.get_audio_url(clean_content, speaker_id)
+    #         if audio_url:
+    #             msg_data['audio_url'] = audio_url
+    #         message_count += 1
+    #         ui_history.append(msg_data)
+    # update_chat_history(ui_history)
     
     if not conversation_ended:
         print("\n--- Maximum turns reached, ending conversation ---")

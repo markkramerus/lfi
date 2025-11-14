@@ -8,9 +8,15 @@
 </head>
 <body>
     <div class="header-container">
-        <h2>Conversational Interoperability</h2>
-        <h2 id="scenario-title"></h2>
-        <h3 id="scenario-description"></h3>
+        <div class="header-left">
+            <h2>Conversational Interoperability</h2>
+            <h2 id="scenario-title"></h2>
+            <h3 id="scenario-description"></h3>
+        </div>
+        <button id="pause-play-btn" class="pause-play-button" onclick="togglePause()">
+            <span id="pause-icon">⏸</span>
+            <span id="play-icon" style="display: none;">▶</span>
+        </button>
     </div>
     <div class="chat-container" id="chat-container">
         <!-- Chat messages will be inserted here by JavaScript -->
@@ -125,6 +131,57 @@
 
         // Initial fetch
         fetchChatHistory();
+
+        // Pause/Play functionality
+        let isPaused = false;
+
+        async function togglePause() {
+            isPaused = !isPaused;
+            
+            // Update button UI
+            const pauseIcon = document.getElementById('pause-icon');
+            const playIcon = document.getElementById('play-icon');
+            const button = document.getElementById('pause-play-btn');
+            
+            if (isPaused) {
+                pauseIcon.style.display = 'none';
+                playIcon.style.display = 'inline';
+                button.classList.add('paused');
+            } else {
+                pauseIcon.style.display = 'inline';
+                playIcon.style.display = 'none';
+                button.classList.remove('paused');
+            }
+            
+            // Send state to server
+            try {
+                await fetch('/pause_state', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ paused: isPaused })
+                });
+            } catch (error) {
+                console.error('Failed to update pause state:', error);
+            }
+        }
+
+        // Initialize pause state from server
+        async function initializePauseState() {
+            try {
+                const response = await fetch('/pause_state');
+                const data = await response.json();
+                if (data.paused && !isPaused) {
+                    togglePause();
+                }
+            } catch (error) {
+                console.error('Failed to fetch initial pause state:', error);
+            }
+        }
+
+        // Initialize on load
+        initializePauseState();
     </script>
 </body>
 </html>

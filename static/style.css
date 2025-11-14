@@ -13,6 +13,47 @@ body {
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     text-align: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-left {
+    flex: 1;
+}
+
+.pause-play-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    flex-shrink: 0;
+}
+
+.pause-play-button:hover {
+    background-color: #0056b3;
+    transform: scale(1.1);
+}
+
+.pause-play-button:active {
+    transform: scale(0.95);
+}
+
+.pause-play-button.paused {
+    background-color: #28a745;
+}
+
+.pause-play-button.paused:hover {
+    background-color: #218838;
 }
 
 #scenario-title {

@@ -6,15 +6,18 @@ from tts_service import tts_service
 
 app = Flask(__name__)
 chat_history = []
+chat_history_lock = threading.Lock()  # Lock for thread-safe access to chat_history
 scenario_info = {}
 audio_playback_complete = threading.Event()
 audio_playback_complete.set()  # Initially ready
 flask_thread = None
+is_paused = False  # Global pause state
 
 def update_chat_history(new_history):
     global chat_history
     # Audio is now generated in main.py before this is called
-    chat_history = new_history
+    with chat_history_lock:
+        chat_history = new_history
 
 def update_scenario_info(new_info):
     global scenario_info
@@ -26,7 +29,10 @@ def index():
 
 @app.route('/history')
 def history():
-    return jsonify(chat_history)
+    with chat_history_lock:
+        # Create a copy to avoid holding the lock during JSON serialization
+        history_copy = list(chat_history)
+    return jsonify(history_copy)
 
 @app.route('/info')
 def info():
@@ -38,6 +44,22 @@ def audio_complete():
     global audio_playback_complete
     audio_playback_complete.set()
     return jsonify({"status": "ok"})
+
+@app.route('/pause_state', methods=['GET', 'POST'])
+def pause_state():
+    """Get or set the pause state"""
+    global is_paused
+    if request.method == 'POST':
+        data = request.get_json()
+        is_paused = data.get('paused', False)
+        return jsonify({"paused": is_paused})
+    else:
+        return jsonify({"paused": is_paused})
+
+def is_execution_paused():
+    """Check if execution is paused"""
+    global is_paused
+    return is_paused
 
 def wait_for_audio_playback():
     """Main loop calls this to wait for frontend to finish playing audio"""
