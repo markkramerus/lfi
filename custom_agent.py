@@ -50,11 +50,13 @@ class CustomAnthropicAgent(AnthropicAgent):
             print("--- DEBUG: Missing scenario or agent_config ---")
             return ConversationMessage(role="assistant", content=[{"type": "text", "text": "Error: Missing scenario or agent_config"}])
 
-        #print(f"\n--- CustomAnthropicAgent.process_request ---")
-        #print("Chat history received:")
-        #for message in chat_history:
-        #    print(f"  - Role: {message.role}, Content: {message.content}")
-        #print(f"input_text: {input_text[0:200]}...(truncated)")
+        print(f"\n======= START CustomAnthropicAgent.process_request ========")
+        print(f"Chat history received has {len(chat_history)} elements:\n")
+        for message in chat_history:
+           print(f"  - Role: {message.role}, Content: {str(message.content)[0:200]}...\n")
+        print(f"  current message: {input_text[0:200]}...")
+        print(f"  current agent_config: {AGENT_CONFIG['agentId']}")
+        print(f"\n======= END CustomAnthropicAgent.process_request ========")
 
         result = await super().process_request(input_text, user_id, session_id, chat_history, additional_params)
         
@@ -78,7 +80,8 @@ async def tool_surrogate_func(*args, **kwargs):
     if tool_name is None:
         print(f"WARNING: Tool name (required) was not included in a tool execution request. Arguments passed by LLM: {kwargs}. SKIPPING.")
         return("Unable to execute unnamed tool. Make sure the 'tool_name' parameter is always provided when requesting tool execution.")
-    print(f"--- Tool {tool_name} called with inputs: {kwargs} ---")
+    #print(f"--- Tool {tool_name} called with inputs: {kwargs} ---")
+    print(f"--- Tool {tool_name} called ---")
     global TOOL_CALLS_THIS_TURN
     TOOL_CALLS_THIS_TURN.append(tool_name)
     current_tool_config = None
@@ -104,15 +107,14 @@ async def tool_surrogate_func(*args, **kwargs):
         name='Anthropic Assistant',
         description='A simple AI assistant',
         api_key=ANTHROPIC_API_KEY,
-        model_id = 'claude-3-7-sonnet-latest',
+        model_id = 'claude-haiku-4-5-20251001',
         streaming=False
     ))
 
     response = await SimpleAgent.process_request(prompt, USER_ID, SESSION_ID, [])
     # The response from the LLM is a ConversationMessage, e.g., (role="assistant", content=[{"type": "text", "text": "Error: Missing scenario or agent_config"}])
     trimmed_response = strip_fences(response.content[0].get('text', 'Error: No text included in the tool agent response.'))
-    newline_char = '\n'
-    print(f"--- Response from surrogate tool (trimmed): {' '.join(trimmed_response[0:100].replace(newline_char,' ').split())}")
+    #print(f"--- Response from surrogate tool (trimmed): {' '.join(trimmed_response[0:100].replace(newline_char,' ').split())}")
     
     # Check if the tool is meant to end the conversation
     if current_tool_config.get("endsConversation"):

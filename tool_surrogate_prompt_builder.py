@@ -90,7 +90,6 @@ def conversation_history(history):
             if message.content and isinstance(message.content, list) and 'text' in message.content[0]:
                 content = message.content[0]['text']
             history_str += f"{role}: {content}\n"
-    
     return f"""
 <CONVERSATION_HISTORY>
 {history_str.strip()}

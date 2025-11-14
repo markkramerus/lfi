@@ -9,7 +9,7 @@ agent-squad[all]
 
 # Text-to-Speech dependencies
 gtts
-pydub
+google-cloud-texttospeech
 
 # LLM caching - local package installed in editable mode
 # Install with: pip install -e ../llm-cache

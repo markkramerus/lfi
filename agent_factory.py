@@ -75,12 +75,12 @@ def create_agents_from_scenario(file_path: str):
             name=agent_config.get('agentId'),
             description=agent_config.get('situation'),
             api_key=ANTHROPIC_API_KEY,
-            #model_id='claude-sonnet-4-20250514',  # Default model
-            model_id = 'claude-3-7-sonnet-latest',
+            model_id = 'claude-haiku-4-5-20251001',
             streaming=False,
             custom_system_prompt={"template": system_prompt},
             tool_config = {'tool': tools, 'toolMaxRecursions': 10}
         ))
+        #print(f"**SYSTEM PROMPT FOR AGENT {agent_config.get('agentId')}**\n{system_prompt}\n*******")
         # Save the entire configuration dictionary
         agent.agent_config = agent_config
         agents.append(agent)
