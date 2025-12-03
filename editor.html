@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent & Scenario Editor</title>
+    <link rel="stylesheet" href="editor-styles.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <!-- Sidebar Tabs -->
+        <div class="sidebar-tabs">
+            <div class="sidebar-tab active" data-tab="agent" onclick="switchSidebarTab('agent')">
+                Agents
+            </div>
+            <div class="sidebar-tab" data-tab="scenario" onclick="switchSidebarTab('scenario')">
+                Scenarios
+            </div>
+        </div>
+
+        <!-- Sidebar Content -->
+        <div class="sidebar-content">
+            <!-- Agent Panel -->
+            <div class="sidebar-panel active" id="agentPanel">
+                <div class="item-list" id="agentList">
+                    <!-- Agent items will be dynamically added here -->
+                </div>
+                <div class="sidebar-buttons">
+                    <button onclick="createNewAgent()">
+                        <span>+</span> New Agent
+                    </button>
+                    <button onclick="importJSON()">
+                        <span>↑</span> Import JSON
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scenario Panel -->
+            <div class="sidebar-panel" id="scenarioPanel">
+                <div class="item-list" id="scenarioList">
+                    <!-- Scenario items will be dynamically added here -->
+                </div>
+                <div class="sidebar-buttons">
+                    <button onclick="createNewScenario()">
+                        <span>+</span> New Scenario
+                    </button>
+                    <button onclick="importJSON()">
+                        <span>↑</span> Import JSON
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="tabs">
+                <div class="tab active" data-tab="editor" onclick="switchTab('editor')">Editor</div>
+                <div class="tab" data-tab="json" onclick="switchTab('json')">JSON Source</div>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="saveItem()">
+                    <span>💾</span> Save
+                </button>
+                <button class="btn btn-secondary" onclick="exportItem()">
+                    <span>⤓</span> Download
+                </button>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <div class="editor-view active" id="editorView">
+                <div class="empty-state">
+                    <h2>No Item Selected</h2>
+                    <p>Select an agent or scenario from the sidebar or create a new one</p>
+                </div>
+            </div>
+            <div class="json-view" id="jsonView">
+                <div class="empty-state">
+                    <h2>No Item Selected</h2>
+                    <p>Select an agent or scenario from the sidebar or create a new one</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="editor-script.js"></script>
+</body>
+</html>

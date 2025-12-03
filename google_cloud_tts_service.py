@@ -45,26 +45,26 @@ class GoogleCloudTTSService:
         text_hash = hashlib.md5(f"{speaker_id}:{text}".encode()).hexdigest()
         return f"{text_hash}.mp3"
     
-    def _add_sentence_punctuation(self, text):
-        """Add periods to lines that don't end with proper punctuation."""
-        lines = text.split('\n')
-        processed_lines = []
+    # def _add_sentence_punctuation(self, text):
+    #     """Add periods to lines that don't end with proper punctuation."""
+    #     lines = text.split('\n')
+    #     processed_lines = []
         
-        for line in lines:
-            stripped = line.rstrip()
-            if not stripped:
-                # Keep empty lines as is
-                processed_lines.append(line)
-                continue
+    #     for line in lines:
+    #         stripped = line.rstrip()
+    #         if not stripped:
+    #             # Keep empty lines as is
+    #             processed_lines.append(line)
+    #             continue
             
-            # Check if line ends with punctuation
-            if stripped[-1] not in '.!?:;,':
-                # Add a period to make it a proper sentence
-                processed_lines.append(stripped + '.')
-            else:
-                processed_lines.append(line)
+    #         # Check if line ends with punctuation
+    #         if stripped[-1] not in '.!?:;,':
+    #             # Add a period to make it a proper sentence
+    #             processed_lines.append(stripped + '.')
+    #         else:
+    #             processed_lines.append(line)
         
-        return '\n'.join(processed_lines)
+    #     return '\n'.join(processed_lines)
     
     def _generate_audio_file(self, text, speaker_id):
         """Generate audio file for the given text and speaker."""
@@ -82,7 +82,7 @@ class GoogleCloudTTSService:
                 return None
             
             # Add periods to lines without proper punctuation
-            clean_text = self._add_sentence_punctuation(clean_text)
+            #lean_text = self._add_sentence_punctuation(clean_text)
             
             # Get voice config for speaker
             voice_config = self.voice_configs.get(speaker_id, self.voice_configs["speaker1"])

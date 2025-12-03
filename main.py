@@ -3,7 +3,7 @@
 ##############################
 #        PARAMETERS          # 
 MAX_TURNS = 18
-CLEAR_CACHE = False          # WARNING: This clears the entire cache, not just the cache related to this use case
+CLEAR_CACHE = False          # WARNING: This clears the entire cache, not just this use case
 CACHE_RESULT = True
 USE_GOOGLE_CLOUD_TTS = True  # Text-to-speech: if both are false, no TTS is generated
 USE_GTTS = False
@@ -24,41 +24,12 @@ import re
 import time
 import signal
 from dotenv import load_dotenv
-from app import start_flask_app, update_chat_history, update_scenario_info, wait_for_audio_playback, is_execution_paused
+from app import start_flask_app, update_chat_history, update_scenario_info, is_execution_paused
 from agent_squad.orchestrator import AgentSquad, AgentSquadConfig
 from agent_squad.types import ConversationMessage, ParticipantRole
 from agent_squad.classifiers import ClassifierResult
 from agent_chooser import AgentChooser
 from agent_factory import create_agents_from_scenario
-
-
-def split_at_nearest_sentence(text, target_index):
-    """Splits a string at the word boundary nearest to the target index."""
-    if target_index < 0 or target_index >= len(text):
-        raise IndexError("Target index is out of the string's range.")
-    before_index = text.rfind('. ', 0, target_index)
-    after_index = text.find('. ', target_index)
-    # Handle edge cases where a space is not found on one or both sides
-    if before_index == -1 and after_index == -1:
-        # No spaces, return the full string
-        return text, ""
-    elif before_index == -1:
-        # No spaces before, split at the first space after
-        split_index = after_index
-    elif after_index == -1:
-        # No spaces after, split at the last space before
-        split_index = before_index
-    else:  # include the full sentence after the split (changed from closest period)
-        # # Compare distances to find the nearest space
-        # if (target_index - before_index) <= (after_index - target_index):
-        #     split_index = before_index
-        # else:
-        #     split_index = after_index
-        split_index = after_index
-    # Split the string at the nearest word boundary
-    first_part = text[:split_index]
-    second_part = text[split_index:].strip()  # .strip() removes leading whitespace
-    return first_part, second_part
 
 import llm_cache
 if CLEAR_CACHE: # wipe existing cache values
@@ -211,7 +182,7 @@ async def main(args):
 
             if tts_service is not None:
                 # Remove markdown formatting characters (# and *) for TTS
-                tts_content = clean_content.replace('#', '').replace('*', '')
+                tts_content = clean_content.replace('#', '').replace('*', '').replace('-','')
                 speaker_num = len([m for m in ui_history if m.get('type') == 'message'])
                 speaker_id = f"speaker{(speaker_num % 2) + 1}"
                 print(f"Generating audio for message {speaker_num + 1}: speaker={speaker_id}")
@@ -224,8 +195,8 @@ async def main(args):
             
             ui_history.append(msg_data)
         
-        # Count how many audio messages we're about to send
-        audio_messages = len([m for m in ui_history if m.get('type') == 'message' and m.get('audio_url')])
+        # # Count how many audio messages we're about to send
+        # audio_messages = len([m for m in ui_history if m.get('type') == 'message' and m.get('audio_url')])
         
         print(f"--- UI_HISTORY length = {len(ui_history)}")
         update_chat_history(ui_history)
@@ -247,46 +218,6 @@ async def main(args):
         while is_execution_paused() and not conversation_ended:
             print("⏸ Execution paused... (waiting for play)")
             time.sleep(0.5)
-
-    # # Perform one final UI update to ensure the last message is displayed
-    # #chat_history = await orchestrator.storage.fetch_chat(user_id, session_id, responding_agent.id)
-    # ui_history = []
-    # message_count = 0
-    # for message in chat_history:
-    #     agent_id = responding_agent_id if message.role == ParticipantRole.ASSISTANT.value else sending_agent_id
-    #     raw_content = ""
-    #     if message.content and isinstance(message.content, list) and len(message.content) > 0 and message.content[0].get('text'):
-    #         raw_content = message.content[0]['text']
-
-    #     if raw_content.startswith(f"{responding_agent_id}: "):
-    #         raw_content = raw_content.replace(f"{responding_agent_id}: ", "", 1)
-
-    #     tool_calls = re.findall(r'\[TOOL_CALL\](.*?)\[/TOOL_CALL\]', raw_content)
-    #     clean_content = re.sub(r'\[TOOL_CALL\].*?\[/TOOL_CALL\]', '', raw_content).strip()
-
-    #     for tool_name in tool_calls:
-    #         ui_history.append({
-    #             'role': message.role,
-    #             'agent_id': agent_id,
-    #             'type': 'tool',
-    #             'content': f"Running tool: {tool_name}"
-    #         })
-        
-    #     if clean_content:
-    #         msg_data = {
-    #             'role': message.role,
-    #             'agent_id': agent_id,
-    #             'type': 'message',
-    #             'content': clean_content
-    #         }
-    #         # Generate audio URL for this message
-    #         speaker_id = f"speaker{(message_count % 2) + 1}"
-    #         audio_url = tts_service.get_audio_url(clean_content, speaker_id)
-    #         if audio_url:
-    #             msg_data['audio_url'] = audio_url
-    #         message_count += 1
-    #         ui_history.append(msg_data)
-    # update_chat_history(ui_history)
     
     if not conversation_ended:
         print("\n--- Maximum turns reached, ending conversation ---")

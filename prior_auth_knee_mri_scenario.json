@@ -1,0 +1,68 @@
+{
+    "type": "scenario",
+    "title": "Knee MRI Prior Authorization",
+    "id": "knee_mri_01",
+    "description": "Prior authorization negotiation for knee MRI with requirements for conservative therapy and in-network providers.",
+    "background": "Patient sustained an acute right knee injury with suspected ACL tear while playing soccer. After 14 days of conservative therapy with persistent instability, his PCP has ordered an MRI.",
+    "agents": {
+        "initiating_agent_id": "prior_auth_patient_agent",
+        "responding_agent_id": "prior_auth_insurance_agent"
+    },
+    "knowledgeBase": {
+        "demographics": {
+            "name": "Alex Ray",
+            "dateOfBirth": "1987-09-14",
+            "memberId": "HF8901234567",
+            "planType": "PPO Gold"
+        },
+        "providers": {
+            "pcp": {
+                "name": "Priya Mehta, MD",
+                "npi": "1629345678",
+                "tin": "11-3456789"
+            },
+            "preferredImaging": {
+                "name": "Springfield Advanced Imaging Center",
+                "npi": "1679599911"
+            }
+        },
+        "timeline": [
+            {
+                "date": "2024-06-01",
+                "event": "Pivot injury to right knee during soccer; swelling within hours"
+            },
+            {
+                "date": "2024-06-02",
+                "event": "Urgent care visit; x-ray negative for fracture; knee immobilizer provided"
+            },
+            {
+                "date": "2024-06-10",
+                "event": "PCP exam positive Lachman; MRI ordered if instability persists after PT"
+            },
+            {
+                "date": "2024-06-15",
+                "event": "Physical therapy started (HSS PT), lasting 2 weeks"
+            },
+            {
+                "date": "2024-06-27",
+                "event": "Continued instability with stairs and pivoting; PT notes document limited improvement"
+            },
+            {
+                "date": "2024-07-01",
+                "event": "PCP ordered right knee MRI without contrast"
+            }
+        ],
+        "clinicalNotes": [
+            "X-ray 6/2/24: Negative for fracture, mild joint effusion",
+            "PT notes 6/15-6/27: Daily sessions, persistent anterior instability with functional activities",
+            "Lachman test: Positive (Grade 2) with soft endpoint",
+            "McMurray test: Negative for meniscal involvement"
+        ],
+        "labsAndImaging": [
+            {
+                "date": "2024-06-10",
+                "event": "PCP exam positive Lachman; MRI ordered if instability persists."
+            }
+        ]
+    }
+}
