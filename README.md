@@ -2,6 +2,43 @@
 
 This project demonstrates how to build a multi-agent conversational system using the Agent Squad framework. It includes a dynamic agent factory that creates and configures agents from scenario files, and it showcases how to implement and use tools to give agents advanced capabilities.
 
+## Running the Application
+
+There are two ways to run scenarios:
+
+### Option 1: Using the Editor (Recommended)
+
+The visual editor allows you to create, edit, and run scenarios with a graphical interface.
+
+1. **Start the scenario runner server:**
+   ```bash
+   python run_scenario.py --server
+   ```
+   This starts the API server on port 5002, waiting for scenarios from the editor.
+
+2. **Open the editor in your browser:**
+   - Open `editor.html` directly in your web browser (e.g., double-click the file or use `File > Open`)
+
+3. **Import or create agents and scenarios:**
+   - Use the "Import JSON" button to import existing agent and scenario files
+   - Or create new agents and scenarios using the editor interface
+
+4. **Run a scenario:**
+   - Select a scenario from the Scenarios tab
+   - Click the green **"Run Scenario"** button in the top toolbar
+   - The system will validate that both agents referenced in the scenario exist
+   - A chat window will open at `http://127.0.0.1:5001` showing the agent conversation
+
+### Option 2: Command Line
+
+Run a scenario directly from the command line by specifying the scenario file:
+
+```bash
+python run_scenario.py knee_mri
+```
+
+This loads the scenario from `scenarios/knee_mri.json` and starts the conversation.
+
 ## How Tool Use is Implemented
 
 Tool use in the Agent Squad framework is a multi-step process that allows a Large Language Model (LLM) to decide *which* tool to use and with *what* inputs, while the framework handles the actual execution.

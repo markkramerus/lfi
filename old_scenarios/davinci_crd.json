@@ -1,5 +1,5 @@
 {
-  "metadata": {
+  "scenario": {
     "id": "crd_head_ct_prior_auth",
     "title": "CRD Prior Authorization for Head CT Imaging",
     "tags": ["davinci", "crd", "prior-authorization", "imaging", "fhir", "cds-hooks"],

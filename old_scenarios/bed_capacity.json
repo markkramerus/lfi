@@ -1,5 +1,5 @@
 {
-  "metadata": {
+  "scenario": {
     "id": "please-replace-this-placeholder-1757522589240-aryxe6",
     "title": "Hospital Bed Capacity Query",
     "description": "A care coordinator from one hospital queries bed availability at another hospital for patient transfer, involving verification of patient details and bed status checks.",

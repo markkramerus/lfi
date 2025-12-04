@@ -317,6 +317,7 @@ function renderEditorView() {
     } else {
         showEmptyState();
     }
+    updateRunScenarioButtonVisibility();
 }
 
 function renderJSONView() {
@@ -929,4 +930,99 @@ function exportItem() {
     link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
+}
+
+// Update the visibility of the Run Scenario button
+function updateRunScenarioButtonVisibility() {
+    const btn = document.getElementById('runScenarioBtn');
+    if (btn) {
+        if (currentItemType === 'scenario' && currentScenarioIndex >= 0) {
+            btn.style.display = 'flex';
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+}
+
+// Run Scenario function
+async function runScenario() {
+    if (currentItemType !== 'scenario' || currentScenarioIndex === -1) {
+        alert('Please select a scenario first.');
+        return;
+    }
+    
+    const scenario = scenarios[currentScenarioIndex];
+    
+    // Get the agent IDs from the scenario
+    const initiatingAgentId = scenario.agents?.initiating_agent_id;
+    const respondingAgentId = scenario.agents?.responding_agent_id;
+    
+    if (!initiatingAgentId || !respondingAgentId) {
+        alert('Scenario must have both initiating_agent_id and responding_agent_id defined in the agents section.');
+        return;
+    }
+    
+    // Find the agents by their IDs
+    const initiatingAgent = agents.find(a => a.agentId === initiatingAgentId);
+    const respondingAgent = agents.find(a => a.agentId === respondingAgentId);
+    
+    // Validate both agents exist
+    const missingAgents = [];
+    if (!initiatingAgent) {
+        missingAgents.push(`Initiating agent "${initiatingAgentId}"`);
+    }
+    if (!respondingAgent) {
+        missingAgents.push(`Responding agent "${respondingAgentId}"`);
+    }
+    
+    if (missingAgents.length > 0) {
+        alert(`Cannot run scenario. The following agents are not found in the editor:\n\n${missingAgents.join('\n')}\n\nPlease import or create these agents first.`);
+        return;
+    }
+    
+    // Add the initiating message to the initiating agent if it's defined in the scenario
+    const initiatingAgentWithMessage = { ...initiatingAgent };
+    if (scenario.agents?.messageToUseWhenInitiatingConversation) {
+        initiatingAgentWithMessage.messageToUseWhenInitiatingConversation = scenario.agents.messageToUseWhenInitiatingConversation;
+    }
+    
+    // Build the combined JSON structure
+    const combinedData = {
+        metadata: {
+            id: scenario.id,
+            title: scenario.title,
+            description: scenario.description,
+            background: scenario.background,
+            tags: scenario.tags || []
+        },
+        scenario: {},
+        knowledgeBase: scenario.knowledgeBase || {},
+        agents: [
+            initiatingAgentWithMessage,
+            respondingAgent
+        ]
+    };
+    
+    console.log('Combined scenario data:', combinedData);
+    
+    // Send to the backend
+    try {
+        const response = await fetch('http://127.0.0.1:5002/run-scenario', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(combinedData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            alert(`Scenario "${scenario.title}" is now running!\n\nA browser window should open with the chat interface.`);
+        } else {
+            const error = await response.text();
+            alert(`Failed to run scenario: ${error}`);
+        }
+    } catch (error) {
+        alert(`Failed to connect to the scenario runner server.\n\nMake sure the server is running with:\npython run_scenario.py --server\n\nError: ${error.message}`);
+    }
 }

@@ -1,5 +1,5 @@
 {
-  "metadata": {
+  "scenario": {
     "id": "birth_registration_submission",
     "title": "Birth Registration Data Submission to State Vital Records",
     "tags": [

@@ -1,5 +1,5 @@
 {
-  "metadata": {
+  "scenario": {
     "id": "transplant_referral_evaluation_hla_normalization",
     "title": "Transplant Referral Evaluation with Cross-Institution Data Normalization",
     "description": "Transplant center agent evaluates a referral by collaborating with an outside hospital EHR agent to collect labs, imaging, and normalize HLA data formats through conversation.",

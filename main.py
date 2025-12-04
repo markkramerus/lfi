@@ -82,10 +82,10 @@ async def main(args):
         print("No agents were created. Exiting.")
         return
 
-    if scenario_data.get("metadata"):
+    if scenario_data.get("scenario"):
         update_scenario_info({
-            "title": scenario_data["metadata"].get("title", "Chat Scenario"),
-            "description": scenario_data["metadata"].get("description", "")
+            "title": scenario_data["scenario"].get("title", ""),
+            "description": scenario_data["scenario"].get("description", "")
         })
 
     # 2. Set up the orchestrator

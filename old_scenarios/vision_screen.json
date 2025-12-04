@@ -1,5 +1,5 @@
 {
-  "metadata": {
+  "scenario": {
     "id": "scen_vision_screen_01",
     "title": "Pediatric Vision Screening",
     "description": "Tests coordination between school nurse and pediatrician for vision screening referral and follow-up.",
@@ -15,7 +15,6 @@
       "Parent work schedule makes appointment coordination challenging."
     ]
   },
-  "scenario": {},
   "agents": [
     {
       "agentId": "school-nurse",

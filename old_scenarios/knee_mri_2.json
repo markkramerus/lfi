@@ -1,34 +1,26 @@
 {
-  "metadata": {
+  "scenario": {
     "id": "scen_knee_mri_01",
     "title": "Knee MRI Auth",
-    "description": "Tests prior auth negotiation for knee MRI with conservative therapy and network constraints.",
+    "description": "Tests prior authorization negotiation for knee MRI with conservative therapy and network constraints.",
     "tags": [
       "prior-auth",
       "orthopedics"
     ],
-    "background": "Alex Ray, a 38-year-old amateur soccer player, sustained an acute right knee injury. After 16 days of conservative therapy with persistent instability, his PCP has ordered an MRI.",
-    "challenges": [
-      "The insurer's policy requires ≥14 days of conservative therapy, which has been met, but documentation must be clear.",
-      "The insurer gives expedited processing for in-network providers, which must be verified."
-    ]
+    "background": "Alex Ray, a 38-year-old amateur soccer player, sustained an acute right knee injury. After 14 days of conservative therapy with persistent instability, his PCP has ordered an MRI."
   },
-  "scenario": {},
+
   "agents": [
     {
       "agentId": "patient-agent",
-      "principal": {
-        "type": "individual",
-        "name": "Alex Ray",
-        "description": "A 38-year-old amateur soccer player with an acute right knee injury."
-      },
-      "situation": "You are contacting the insurance company to get prior authorization for a right knee MRI for your client, Alex Ray.",
-      "systemPrompt": "You are an AI agent representing Alex Ray (DOB: 1987-09-14, Member ID: HF8901234567, PPO Gold plan). Your instructions are to obtain prior authorization for a right knee MRI ordered by Dr. Priya Mehta (NPI: 1629345678). You have access to complete clinical documentation in your knowledge base including demographics, provider details, and preferred imaging facility (Springfield Advanced Imaging Center, NPI: 1679599911). Ask the insurance company what they need, communicate clearly, provide necessary documentation when requested, and aim for a swift approval. Try to request a full copy of any applicable policy document from the insurer. Don't volunteer info before you are asked.",
+      "systemPrompt": "You are an agent who represents a patient requiring prior authorization for a necessary medication or medical procedure. To obtain the authorization, you will have a conversation with an agent representing an insurance company. You will ask the insurer what information is needed for the prescribed medication or procedure. Ask the insurance company what they need, communicate clearly, provide necessary documentation when requested, and aim for a swift approval. Try to request a full copy of any applicable policy document from the insurer. Don't volunteer info before you are asked. You have access to complete clinical documentation in your knowledge base including demographics, provider details, and insurance information. The authorization decision will be made by the insurance company. Make sure you understand the decision and the reason, and follow-up steps, if necessary.",
       "goals": [
         "Obtain MRI authorization",
         "Minimize delays",
         "Understand next steps"
       ],
+      "situation": "Your task is to represent the patient, Alex Ray, a 38-year-old amateur soccer player with an acute right knee injury. Your are to obtain prior authorization for a right knee MRI ordered by Dr. Priya Mehta (NPI: 1629345678). The preferred imaging facility is Springfield Advanced Imaging Center, NPI: 1679599911.",
+
       "tools": [
         {
           "toolName": "search_ehr_clinical_notes",
@@ -128,7 +120,7 @@
             "event": "Physical therapy started (HSS PT), lasting 2 weeks"
           },
           {
-            "date": "2024-06-30",
+            "date": "2024-06-27",
             "event": "Continued instability with stairs and pivoting; PT notes document limited improvement"
           },
           {
@@ -138,7 +130,7 @@
         ],
         "clinicalNotes": [
           "X-ray 6/2/24: Negative for fracture, mild joint effusion",
-          "PT notes 6/15-6/30: Daily sessions, persistent anterior instability with functional activities",
+          "PT notes 6/15-6/27: Daily sessions, persistent anterior instability with functional activities",
           "Lachman test: Positive (Grade 2) with soft endpoint",
           "McMurray test: Negative for meniscal involvement"
         ],

@@ -1,0 +1,11 @@
+{
+    "type": "scenario",
+    "title": "Knee MRI Prior Authorization",
+    "id": "knee_mri_01",
+    "description": "Prior authorization negotiation for knee MRI with requirements for conservative therapy and in-network providers.",
+    "background": "Patient sustained an acute right knee injury with suspected ACL tear while playing soccer. After 14 days of conservative therapy with persistent instability, his PCP has ordered an MRI.",
+    "agents": {
+        "initiating_agent_id": "prior_auth_patient_agent",
+        "responding_agent_id": "prior_auth_insurance_agent"
+    }
+}

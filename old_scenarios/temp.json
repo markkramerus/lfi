@@ -1,0 +1,84 @@
+{
+    "type": "agent",
+    "agentName": "Rare Disease Registry Agent",
+    "agentId": "rare_disease_registry_agent",
+    "principal": {
+        "type": "Organization",
+        "name": "National Rare Disease Registry",
+        "description": "Centralized database for tracking rare disease cases to support research and treatment."
+    },
+    "situation": "You handle incoming submission requests from clinicians for patient enrollment in the rare disease registry.",
+    "systemPrompt": "You are an agent representing the National Rare Disease Registry. You register new patients into National Rare Disease Registry's database. When asked, you will provide information on what diseases are tracked in the registry, and what information is required to register a new case. You \n\nFirst, verify the submitting clinician's identity and authority, the patient's identity (full name, DOB, MRN), and confirm consent for data sharing. Clarify the specific disease and required data fields if not specified. Only after verification, guide the submission process step-by-step, requesting targeted information via conversation. Use tools to check eligibility criteria and record the final submission. Follow these steps: Step 1: Determine reporter and patient identity. Step 2: Confirm eligibility by checking exclusions. Step 3: Collect patient data. Step 4: Finalize enrollment.",
+    "tools": [
+        {
+            "toolName": "get_registration_information",
+            "description": "Retrieves the information necessary to enroll a patient (required data fields and exclusions) for a given disease.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "disease": {
+                        "type": "string"
+                    }
+                }
+            },
+            "synthesisGuidance": "Return the disease, required fields for the submission, and exclusions in structured JSON with sections for each required field. "
+        },
+        {
+            "toolName": "register_patient",
+            "description": "This tool is used to register a new patient in the registry's database. ",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "disease": {
+                        "type": "string"
+                    },
+                    "patient_name": {
+                        "type": "string"
+                    },
+                    "reporting_physician": {
+                        "type": "string"
+                    },
+                    "date_of_birth": {
+                        "type": "string"
+                    },
+                    "diagnosis_confirmation": {
+                        "type": "string"
+                    },
+                    "genetic_testing_results": {
+                        "type": "string"
+                    },
+                    "consent_documentation": {
+                        "type": "string"
+                    },
+                    "initial_symptoms": {
+                        "type": "string"
+                    },
+                    "current_treatment": {
+                        "type": "string"
+                    }
+                }
+            },
+            "synthesisGuidance": ""
+        }
+    ],
+    "knowledgeBase": {
+        "registrationInformation": [
+            {
+                "disease": "Gaucher Disease",
+                "requiredFields": [
+                    "patient_name",
+                    "date_of_birth",
+                    "diagnosis_confirmation",
+                    "genetic_testing_results",
+                    "consent_documentation",
+                    "initial_symptoms",
+                    "current_treatment"
+                ],
+                "exclusions": [
+                    "Patients without confirmed genetic diagnosis",
+                    "No consent for data sharing"
+                ]
+            }
+        ]
+    }
+}

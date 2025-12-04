@@ -1,5 +1,5 @@
 {
-  "metadata": {
+  "scenario": {
     "id": "vyepti-injection-prior-auth",
     "title": "Vyepti Injection Approval for Migraine",
     "description": "Multi-agent scenario for approving Vyepti injection for migraine treatment by reconciling patient's medication history from EHR with payer's personal and medical policies.",

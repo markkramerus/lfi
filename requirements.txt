@@ -1,5 +1,6 @@
 # Project dependencies (unpinned)
 Flask
+flask-cors
 python-dotenv
 anthropic
 

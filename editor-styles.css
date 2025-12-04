@@ -262,6 +262,15 @@ body {
     background: #f5f5f5;
 }
 
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
 /* Content Area */
 .content-area {
     flex: 1;

@@ -1,5 +1,5 @@
 {
-  "metadata": {
+  "scenario": {
     "id": "rare_disease_registry_submission",
     "title": "Rare Disease Registry Patient Submission",
     "description": "A clinical agent attempts to submit a patient's necessary information to a rare disease registry for enrollment and tracking.",
