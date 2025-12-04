@@ -80,7 +80,7 @@ def create_agents_from_scenario(file_path: str):
             custom_system_prompt={"template": system_prompt},
             tool_config = {'tool': tools, 'toolMaxRecursions': 10}
         ))
-        #print(f"**SYSTEM PROMPT FOR AGENT {agent_config.get('agentId')}**\n{system_prompt}\n*******")
+        print(f"**SYSTEM PROMPT FOR AGENT {agent_config.get('agentId')}**\n{system_prompt}\n*******")
         # Save the entire configuration dictionary
         agent.agent_config = agent_config
         agents.append(agent)

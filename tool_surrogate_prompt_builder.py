@@ -28,14 +28,12 @@ Synthesis Guidance: {guidance}
 """
 
 def scenario_header(scenario):
-    title = scenario.get('metadata', {}).get('title', '(untitled)')
-    desc = scenario.get('metadata', {}).get('description', '')
-    tags = scenario.get('metadata', {}).get('tags', [])
-    tags_str = f" [tags: {', '.join(tags)}]" if tags else ''
+    title = scenario.get('scenario', {}).get('title', '(untitled)')
+    desc = scenario.get('scenario', {}).get('description', '')
     return f"""
 <SCENARIO>
-- id: {scenario.get('metadata', {}).get('id', '(missing-id)')}
-- title: {title}{tags_str}
+- id: {scenario.get('scenario', {}).get('id', '(missing-id)')}
+- title: {title}
 - description: {desc}
 </SCENARO>
 """

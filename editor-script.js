@@ -5,6 +5,63 @@ let currentItemType = 'agent'; // 'agent' or 'scenario'
 let currentAgentIndex = -1;
 let currentScenarioIndex = -1;
 
+// Track CodeMirror instances for cleanup
+let codeMirrorInstances = {};
+
+// CodeMirror helper functions
+function destroyAllCodeMirrorInstances() {
+    Object.keys(codeMirrorInstances).forEach(key => {
+        if (codeMirrorInstances[key]) {
+            codeMirrorInstances[key].toTextArea();
+        }
+    });
+    codeMirrorInstances = {};
+}
+
+function createCodeMirrorEditor(elementId, initialValue, onChange, options = {}) {
+    const textarea = document.getElementById(elementId);
+    if (!textarea) return null;
+    
+    // Destroy existing instance if any
+    if (codeMirrorInstances[elementId]) {
+        codeMirrorInstances[elementId].toTextArea();
+    }
+    
+    const defaultOptions = {
+        mode: { name: "javascript", json: true },
+        theme: "default",
+        lineNumbers: true,
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        foldGutter: true,
+        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter", "CodeMirror-lint-markers"],
+        lint: true,
+        tabSize: 2,
+        indentWithTabs: false,
+        lineWrapping: true
+    };
+    
+    const cm = CodeMirror.fromTextArea(textarea, { ...defaultOptions, ...options });
+    
+    // Set initial value
+    cm.setValue(initialValue);
+    
+    // Add change handler with debounce
+    let changeTimeout;
+    cm.on('change', () => {
+        clearTimeout(changeTimeout);
+        changeTimeout = setTimeout(() => {
+            const value = cm.getValue();
+            onChange(value, cm);
+        }, 300);
+    });
+    
+    // Store instance for later cleanup
+    codeMirrorInstances[elementId] = cm;
+    
+    return cm;
+}
+
 // Initialize - load data from localStorage
 function init() {
     loadAgentsFromStorage();
@@ -421,15 +478,35 @@ function renderAgentEditorView() {
 
         <div class="form-section">
             <div class="section-title">KNOWLEDGE BASE (JSON)</div>
-            <div class="form-group">
-                <textarea 
-                    class="form-textarea" 
-                    style="min-height: 150px;"
-                    placeholder='{"key": "value"}'
-                    onchange="updateKnowledgeBase(this.value)">${escapeHtml(JSON.stringify(agent.knowledgeBase || {}, null, 2))}</textarea>
+            <div class="form-group json-field-container">
+                <textarea id="knowledgeBaseEditor">${escapeHtml(JSON.stringify(agent.knowledgeBase || {}, null, 2))}</textarea>
             </div>
         </div>
     `;
+    
+    // Initialize CodeMirror for Knowledge Base
+    setTimeout(() => {
+        initializeKnowledgeBaseEditor(agent);
+    }, 10);
+}
+
+function initializeKnowledgeBaseEditor(agent) {
+    const jsonString = JSON.stringify(agent.knowledgeBase || {}, null, 2);
+    createCodeMirrorEditor('knowledgeBaseEditor', jsonString, (value, cm) => {
+        if (currentAgentIndex === -1) return;
+        try {
+            agents[currentAgentIndex].knowledgeBase = JSON.parse(value);
+            // Update JSON view without re-rendering editor
+            if (currentItemType === 'agent') {
+                renderAgentJSONView();
+            }
+        } catch (error) {
+            // Invalid JSON - just ignore for now, lint will show the error
+        }
+    }, {
+        lineNumbers: true,
+        lint: true
+    });
 }
 
 function updateAgentField(field, value) {
@@ -493,13 +570,11 @@ function renderToolsList(tools) {
                         placeholder="Description of what this tool does..."
                         onchange="updateToolField(${index}, 'description', this.value)">${escapeHtml(tool.description || '')}</textarea>
                 </div>
-                <div class="tool-field">
+                <div class="tool-field json-field-container">
                     <label class="tool-field-label">Input Schema (JSON)</label>
                     <textarea 
-                        class="form-textarea" 
-                        style="min-height: 150px;"
-                        placeholder='{"type": "object", "properties": {}}'
-                        onchange="updateToolInputSchema(${index}, this.value)">${escapeHtml(JSON.stringify(tool.inputSchema || {}, null, 2))}</textarea>
+                        id="toolInputSchema-${index}"
+                        class="tool-input-schema-textarea">${escapeHtml(JSON.stringify(tool.inputSchema || {}, null, 2))}</textarea>
                 </div>
                 <div class="tool-field">
                     <label class="tool-field-label">Synthesis Guidance</label>
@@ -536,8 +611,48 @@ function renderToolsList(tools) {
 function toggleTool(index) {
     const toolElement = document.getElementById(`tool-${index}`);
     if (toolElement) {
+        const wasExpanded = toolElement.classList.contains('expanded');
         toolElement.classList.toggle('expanded');
+        
+        // Initialize CodeMirror for Input Schema when tool is expanded
+        if (!wasExpanded) {
+            initializeToolInputSchemaEditor(index);
+        }
     }
+}
+
+function initializeToolInputSchemaEditor(index) {
+    const editorId = `toolInputSchema-${index}`;
+    
+    // Check if already initialized
+    if (codeMirrorInstances[editorId]) {
+        // Refresh the editor in case it needs to adjust to container size
+        codeMirrorInstances[editorId].refresh();
+        return;
+    }
+    
+    const tool = agents[currentAgentIndex]?.tools?.[index];
+    if (!tool) return;
+    
+    const jsonString = JSON.stringify(tool.inputSchema || {}, null, 2);
+    
+    setTimeout(() => {
+        createCodeMirrorEditor(editorId, jsonString, (value, cm) => {
+            if (currentAgentIndex === -1) return;
+            try {
+                agents[currentAgentIndex].tools[index].inputSchema = JSON.parse(value);
+                // Update JSON view without re-rendering editor
+                if (currentItemType === 'agent') {
+                    renderAgentJSONView();
+                }
+            } catch (error) {
+                // Invalid JSON - lint will show the error
+            }
+        }, {
+            lineNumbers: true,
+            lint: true
+        });
+    }, 50);
 }
 
 function addTool() {
@@ -667,19 +782,19 @@ function renderScenarioEditorView() {
                 <label class="form-label">Initiating Message</label>
                 <textarea 
                     class="form-textarea" 
-                    style="min-height: 60px;"
+                    style="min-height: 100px;"
                     placeholder="Enter the initiating message..."
                     onchange="updateAgentRefField('messageToUseWhenInitiatingConversation', this.value)">${escapeHtml(scenario.agents?.messageToUseWhenInitiatingConversation || '')}</textarea>
             </div>
         </div>
 
-        <div class="form-section">
+        <div class="form-section" hidden>
             <div class="section-title">KNOWLEDGE BASE (JSON)</div>
             <div class="form-group">
                 <textarea 
                     class="form-textarea" 
                     style="min-height: 300px;"
-                    placeholder='{"demographics": {}, "providers": {}, "timeline": [], ...}'
+                    placeholder='{}'
                     onchange="updateScenarioKnowledgeBase(this.value)">${escapeHtml(JSON.stringify(scenario.knowledgeBase || {}, null, 2))}</textarea>
             </div>
         </div>
@@ -714,6 +829,12 @@ function updateScenarioKnowledgeBase(value) {
 
 // JSON View Functions
 function renderAgentJSONView() {
+    // Destroy existing CodeMirror instances in JSON view
+    if (codeMirrorInstances['jsonTextarea']) {
+        codeMirrorInstances['jsonTextarea'].toTextArea();
+        delete codeMirrorInstances['jsonTextarea'];
+    }
+    
     const view = document.getElementById('jsonView');
     if (currentAgentIndex === -1) {
         view.innerHTML = '<div class="empty-state"><h2>No Agent Selected</h2><p>Select an agent from the sidebar or create a new one</p></div>';
@@ -725,36 +846,48 @@ function renderAgentJSONView() {
 
     view.innerHTML = `
         <div class="json-editor">
-            <textarea 
-                class="json-textarea" 
-                id="jsonTextarea"
-                spellcheck="false">${escapeHtml(jsonString)}</textarea>
-            <div id="jsonError" style="display: none;" class="json-error"></div>
+            <div class="json-status" id="jsonStatus">
+                <span class="json-status-indicator valid">✓ Valid JSON</span>
+            </div>
+            <textarea id="jsonTextarea">${escapeHtml(jsonString)}</textarea>
         </div>
     `;
 
-    document.getElementById('jsonTextarea').addEventListener('blur', updateAgentFromJSON);
+    // Initialize CodeMirror for the JSON textarea
+    setTimeout(() => {
+        createCodeMirrorEditor('jsonTextarea', jsonString, (value, cm) => {
+            updateAgentFromJSON(value);
+        });
+    }, 10);
 }
 
-function updateAgentFromJSON() {
+function updateAgentFromJSON(value) {
     if (currentAgentIndex === -1) return;
     
-    const textarea = document.getElementById('jsonTextarea');
-    const errorDiv = document.getElementById('jsonError');
+    const statusDiv = document.getElementById('jsonStatus');
     
     try {
-        const updatedAgent = JSON.parse(textarea.value);
+        const updatedAgent = JSON.parse(value);
         agents[currentAgentIndex] = updatedAgent;
-        errorDiv.style.display = 'none';
+        if (statusDiv) {
+            statusDiv.innerHTML = '<span class="json-status-indicator valid">✓ Valid JSON</span>';
+        }
         renderAgentList();
-        renderAgentEditorView();
+        // Don't re-render editor view to avoid losing focus
     } catch (error) {
-        errorDiv.textContent = 'Invalid JSON: ' + error.message;
-        errorDiv.style.display = 'block';
+        if (statusDiv) {
+            statusDiv.innerHTML = `<span class="json-status-indicator invalid">✗ Invalid JSON: ${escapeHtml(error.message)}</span>`;
+        }
     }
 }
 
 function renderScenarioJSONView() {
+    // Destroy existing CodeMirror instances in JSON view
+    if (codeMirrorInstances['jsonTextarea']) {
+        codeMirrorInstances['jsonTextarea'].toTextArea();
+        delete codeMirrorInstances['jsonTextarea'];
+    }
+    
     const view = document.getElementById('jsonView');
     if (currentScenarioIndex === -1) {
         view.innerHTML = '<div class="empty-state"><h2>No Scenario Selected</h2><p>Select a scenario from the sidebar or create a new one</p></div>';
@@ -766,32 +899,38 @@ function renderScenarioJSONView() {
 
     view.innerHTML = `
         <div class="json-editor">
-            <textarea 
-                class="json-textarea" 
-                id="jsonTextarea"
-                spellcheck="false">${escapeHtml(jsonString)}</textarea>
-            <div id="jsonError" style="display: none;" class="json-error"></div>
+            <div class="json-status" id="jsonStatus">
+                <span class="json-status-indicator valid">✓ Valid JSON</span>
+            </div>
+            <textarea id="jsonTextarea">${escapeHtml(jsonString)}</textarea>
         </div>
     `;
 
-    document.getElementById('jsonTextarea').addEventListener('blur', updateScenarioFromJSON);
+    // Initialize CodeMirror for the JSON textarea
+    setTimeout(() => {
+        createCodeMirrorEditor('jsonTextarea', jsonString, (value, cm) => {
+            updateScenarioFromJSON(value);
+        });
+    }, 10);
 }
 
-function updateScenarioFromJSON() {
+function updateScenarioFromJSON(value) {
     if (currentScenarioIndex === -1) return;
     
-    const textarea = document.getElementById('jsonTextarea');
-    const errorDiv = document.getElementById('jsonError');
+    const statusDiv = document.getElementById('jsonStatus');
     
     try {
-        const updatedScenario = JSON.parse(textarea.value);
+        const updatedScenario = JSON.parse(value);
         scenarios[currentScenarioIndex] = updatedScenario;
-        errorDiv.style.display = 'none';
+        if (statusDiv) {
+            statusDiv.innerHTML = '<span class="json-status-indicator valid">✓ Valid JSON</span>';
+        }
         renderScenarioList();
-        renderScenarioEditorView();
+        // Don't re-render editor view to avoid losing focus
     } catch (error) {
-        errorDiv.textContent = 'Invalid JSON: ' + error.message;
-        errorDiv.style.display = 'block';
+        if (statusDiv) {
+            statusDiv.innerHTML = `<span class="json-status-indicator invalid">✗ Invalid JSON: ${escapeHtml(error.message)}</span>`;
+        }
     }
 }
 
