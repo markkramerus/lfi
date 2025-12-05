@@ -94,9 +94,9 @@ async def main(args):
         print("Could not find an initiating agent in the scenario. You must specify an initiating message.")
         return
     else:
-        sending_agent_id = sending_agent.id
+        sending_agent_name = sending_agent.agent_config.get('agentName', sending_agent.id)
     responding_agent = next((agent for agent in agents if agent.id != sending_agent.id), None)
-    responding_agent_id = responding_agent.id if responding_agent else "Unknown"
+    responding_agent_name = responding_agent.agent_config.get('agentName', responding_agent.id) if responding_agent else "Unknown"
     
     classifier = AgentChooser(initiating_agent_id=responding_agent.id)
     orchestrator = AgentSquad(
@@ -121,11 +121,11 @@ async def main(args):
         print(f"\n======= Turn {turn_count} =======")
         # swap agent roles
         temp = responding_agent
-        temp_id = responding_agent_id
+        temp_name = responding_agent_name
         responding_agent = sending_agent
-        responding_agent_id = sending_agent_id
+        responding_agent_name = sending_agent_name
         sending_agent = temp
-        sending_agent_id = temp_id
+        sending_agent_name = temp_name
         # end swap roles
 
         print(f"--- Sending agent: {sending_agent.id}, Responding agent: {responding_agent.id} ---")
@@ -166,16 +166,16 @@ async def main(args):
         # Add tool call messages to the UI history
         for tool_name in tool_calls:
             ui_history.append({
-                'sending_agent_id': sending_agent_id,
-                'responding_agent_id': responding_agent_id,
+                'sending_agent_id': sending_agent_name,
+                'responding_agent_id': responding_agent_name,
                 'type': 'tool',
                 'content': f"Running tool: {tool_name}",
             })
         # Add the clean conversational message to the UI history
         if clean_content:
             msg_data = {
-                'sending_agent_id': sending_agent_id,
-                'responding_agent_id': responding_agent_id,
+                'sending_agent_id': sending_agent_name,
+                'responding_agent_id': responding_agent_name,
                 'type': 'message',
                 'content': clean_content,
             }

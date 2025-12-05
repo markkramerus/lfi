@@ -1127,15 +1127,12 @@ async function runScenario() {
     
     // Build the combined JSON structure
     const combinedData = {
-        metadata: {
+        scenario: {
             id: scenario.id,
             title: scenario.title,
             description: scenario.description,
-            background: scenario.background,
-            tags: scenario.tags || []
+            background: scenario.background
         },
-        scenario: {},
-        knowledgeBase: scenario.knowledgeBase || {},
         agents: [
             initiatingAgentWithMessage,
             respondingAgent

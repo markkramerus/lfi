@@ -9,8 +9,7 @@
 <body>
     <div class="header-container">
         <div class="header-left">
-            <h2>Conversational Interoperability</h2>
-            <h2 id="scenario-title"></h2>
+            <h2 id="scenario-title">Loading scenario...</h2>
             <h3 id="scenario-description"></h3>
         </div>
         <button id="pause-play-btn" class="pause-play-button" onclick="togglePause()">
@@ -121,6 +120,7 @@
                 if (info && info.title) {
                     document.getElementById('scenario-title').textContent = info.title;
                     document.getElementById('scenario-description').textContent = info.description;
+                    document.title = info.title; // Update browser tab title
                     clearInterval(infoInterval); // Stop polling once data is received
                 }
             }
