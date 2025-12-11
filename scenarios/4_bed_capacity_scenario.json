@@ -1,0 +1,11 @@
+{
+  "type": "scenario",
+  "title": "4_Hospital Bed Capacity Query",
+  "id": "bed_capacity_query",
+  "description": "A care coordinator from one hospital queries bed availability at another hospital for patient transfer, involving verification of patient details and bed status checks.",
+  "background": "In healthcare, timely patient transfers between facilities require real-time bed availability checks while protecting patient privacy through verified communications.",
+  "agents": {
+    "initiating_agent_id": "bed_capacity_care_coordinator_agent",
+    "responding_agent_id": "bed_capacity_bed_manager_agent"
+  }
+}

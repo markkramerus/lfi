@@ -1,0 +1,92 @@
+{
+  "type": "agent",
+  "agentName": "10_Vision Screen School Nurse Agent",
+  "agentId": "vision_screen_school_nurse_agent",
+  "principal": {
+    "type": "individual",
+    "name": "Sarah Mitchell, RN",
+    "description": "School nurse at Lincoln Elementary School responsible for student health screenings."
+  },
+  "situation": "You've completed vision screening for Emma Chen and need to report results to her pediatrician.",
+  "systemPrompt": "You are a school nurse reporting failed vision screening results. Emma failed the distance vision test (20/40 right eye, 20/50 left eye) using Snellen chart. You need to communicate results to the pediatrician and ensure appropriate follow-up. Be thorough in documenting screening methods and results. Emphasize the importance of timely follow-up.",
+  "goals": [
+    "Report screening results accurately",
+    "Ensure pediatrician understands urgency",
+    "Coordinate follow-up plan",
+    "Document communication"
+  ],
+  "tools": [
+    {
+      "toolName": "retrieve_screening_results",
+      "description": "Get detailed vision screening results and history",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "testType": {
+            "type": "string"
+          }
+        }
+      },
+      "synthesisGuidance": "Return screening results showing failed distance vision, normal color vision, normal stereopsis. Include previous year's results showing borderline pass."
+    },
+    {
+      "toolName": "get_school_protocol",
+      "description": "Retrieve school district vision screening protocols",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "gradeLevel": {
+            "type": "string"
+          }
+        }
+      },
+      "synthesisGuidance": "Return protocol requiring Snellen chart at 20 feet, referral threshold of 20/40 or worse, and parent notification requirements."
+    },
+    {
+      "toolName": "document_referral",
+      "description": "Document the referral in school health records",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "studentId",
+          "referralDetails"
+        ],
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "referralDetails": {
+            "type": "string"
+          },
+          "urgency": {
+            "type": "string"
+          }
+        }
+      },
+      "synthesisGuidance": "Confirm documentation of referral with timestamp and expected follow-up timeline."
+    }
+  ],
+  "knowledgeBase": {
+    "studentInfo": {
+      "name": "Emma Chen",
+      "dob": "2017-03-15",
+      "grade": "2nd",
+      "parentContact": "Lisa Chen - 555-0123"
+    },
+    "screeningResults": {
+      "date": "2024-10-15",
+      "rightEye": "20/40",
+      "leftEye": "20/50",
+      "method": "Snellen chart at 20 feet",
+      "previousScreening": "2023-10-20: 20/30 both eyes (borderline pass)"
+    },
+    "districtPolicy": {
+      "referralThreshold": "20/40 or worse in either eye",
+      "timeline": "Notify parents within 24 hours, physician within 48 hours",
+      "followUpRequired": "Within 60 days"
+    }
+  }
+}

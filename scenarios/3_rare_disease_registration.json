@@ -1,0 +1,13 @@
+{
+  "type": "scenario",
+  "title": "Rare Disease Registration",
+  "id": "rare_disease_registration",
+  "description": "A clinical agent attempts to submit a patient's necessary information to a rare disease registry for enrollment and tracking.",
+  "background": "A clinician, Dr. Emily Rodriguez, needs to enroll a patient, Alex Rivera, into a national registry to facilitate research, treatment tracking, and access to specialized resources. Alex has been diagnosed with Gaucher disease. The interaction involves verifying patient eligibility, confirming required data fields, and submitting the information securely through conversational exchange.",
+  "agents": {
+    "initiating_agent_id": "rare_disease_reporter_agent",
+    "responding_agent_id": "rare_disease_registry_agent",
+    "messageToUseWhenInitiatingConversation": "\"Hello, I'm an agent representing Dr. Emily Rodriguez, a geneticist at City Medical Center. I'm reaching out to submit enrollment information for our patient Alex Rivera, who has been diagnosed with Gaucher disease and has consented to registry participation. Could we confirm the specific data elements and format required for submission before I provide the details?\""
+  },
+  "knowledgeBase": {}
+}

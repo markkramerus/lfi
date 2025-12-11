@@ -1,0 +1,133 @@
+{
+  "type": "agent",
+  "agentName": "5_Clinical Trial Manager Agent",
+  "agentId": "clinical_trial_manager_agent",
+  "principal": {
+    "type": "organization",
+    "name": "Innovate Clinical Research Unit",
+    "description": "A research organization conducting pharmaceutical trials."
+  },
+  "situation": "You are monitoring incoming requests from clinicians about trial eligibility. One of your key trials is the GLP-1 Candidate Trial, which is actively recruiting.",
+  "systemPrompt": "You are an AI agent representing Alex Chen, a Clinical Trial Manager. Your role is to screen potential candidates by requesting eligibility information step‑wise. **Ask for only one or two specific data points per message** (e.g., first request age and confirmed T2DM diagnosis; after receiving a reply, ask for the next one or two items such as latest HbA1c, then BMI, then current metformin use). **Never request a full EHR abstract up front.** When you need clinical data, **request a concise EHR abstract attachment that includes only the specific data points you just asked for**. After the basic set is collected, enter a \"gather mode\" where you ask for each additional, more complex criterion **one at a time** (e.g., duration of stable metformin dose, pregnancy status, history of pancreatitis). Use your tools to look up trial protocols and criteria. Systematically move from inclusion to exclusion criteria, and ask for clarification only when a response is ambiguous or incomplete.",
+  "goals": [
+    "Identify the most suitable trial for the presented patient profile.",
+    "Systematically verify all inclusion and exclusion criteria for the selected trial.",
+    "Make a final determination of provisional eligibility and log the result."
+  ],
+  "tools": [
+    {
+      "toolName": "lookup_trial_protocol",
+      "description": "Search the clinical trials database for a specific protocol or find a matching protocol based on a natural language query. Can be used to retrieve full protocol summaries or specific inclusion/exclusion criteria.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "A natural language query about a trial. Example: 'Find a trial for T2DM patients on metformin' or 'List the exclusion criteria for the GLP-1 study'."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Return the requested trial information as a structured markdown document. Provide the high-level details, including full inclusion and exclusion criteria.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "log_provisional_eligibility_decision",
+      "description": "Records the final provisional eligibility decision for a patient in the trial screening log. This tool MUST be used only after all criteria have been evaluated to conclude the screening process.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "patientMrn": {
+            "type": "string"
+          },
+          "trialId": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "Provisionally Eligible",
+              "Not Eligible",
+              "Needs More Information"
+            ]
+          },
+          "reasoning": {
+            "type": "string",
+            "description": "A brief summary of why the decision was made."
+          },
+          "criteriaEvaluation": {
+            "type": "array",
+            "description": "Evaluation of each inclusion/exclusion criterion.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "criterion": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "inclusion",
+                    "exclusion"
+                  ]
+                },
+                "sourceData": {
+                  "type": "string",
+                  "description": "Reference to the data used (e.g., lab result, medication record)."
+                },
+                "met": {
+                  "type": "string",
+                  "enum": [
+                    "met",
+                    "not met",
+                    "unknown"
+                  ],
+                  "description": "Whether the criterion was satisfied."
+                }
+              },
+              "required": [
+                "criterion",
+                "type",
+                "sourceData",
+                "met"
+              ]
+            }
+          }
+        },
+        "required": [
+          "patientMrn",
+          "trialId",
+          "decision",
+          "reasoning",
+          "criteriaEvaluation"
+        ]
+      },
+      "synthesisGuidance": "Generate a JSON object that records the provisional eligibility decision. Include the patientMrn, trialId, decision, reasoning, and a detailed 'criteriaEvaluation' array where each entry contains the criterion text, its type (inclusion or exclusion), the source data referenced, and whether the criterion was met, not met, or unknown. Ensure the output is valid JSON and serves as a formal screening log.",
+      "endsConversation": true,
+      "conversationEndStatus": "neutral"
+    }
+  ],
+  "knowledgeBase": {
+    "trials": [
+      {
+        "id": "NCT0xxxxxxx",
+        "title": "GLP-1 Candidate Trial",
+        "description": "A Phase III Trial of a Novel GLP-1 Receptor Agonist for Patients with Type 2 Diabetes on Metformin.",
+        "inclusionCriteria": [
+          "Age: 18 to 75 years",
+          "Confirmed diagnosis of Type 2 Diabetes Mellitus (T2DM)",
+          "HbA1c between 7.5% and 10.5% (inclusive)",
+          "Body Mass Index (BMI) ≥ 30 kg/m²",
+          "On a stable dose of metformin for at least 3 months prior to screening"
+        ],
+        "exclusionCriteria": [
+          "Currently pregnant, breastfeeding, or planning to conceive",
+          "Documented history of pancreatitis",
+          "Personal or family history of medullary thyroid carcinoma"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "type": "agent",
+  "agentName": "Coverage Discovery Provider Agent",
+  "agentId": "coverage_discovery_provider_agent",
+  "principal": {
+    "type": "Organization",
+    "name": "Regional Medical Center",
+    "description": "Primary care organization"
+  },
+  "situation": "You are an agent who checks coverage requirements before physicians at the Regional Medical Center complete prescriptions for high-cost medications. ",
+  "systemPrompt": "You are an agent representing Regional Medical Center. You are integrated with the clinical workflow and can query coverage requirements in real-time using Coverage Requirements Determination (CRD) services. When a clinician is prescribing medications or ordering services, you proactively check with payers to discover coverage requirements, prior authorization needs, and documentation requirements. Start by confirming the patient identity and medication details with the payer, then request specific coverage guidance. Use your tools to gather clinical context and patient information as needed during the conversation.",
+  "tools": [
+    {
+      "toolName": "lookup_patient_clinical_context",
+      "description": "Retrieve relevant clinical information for the patient from the EHR",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language query about patient clinical information (e.g., 'diagnosis history and previous treatments for patient ID 12345')"
+          },
+          "patientId": {
+            "type": "string",
+            "description": "Patient identifier if not included in query"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Search the knowledgeBase.clinicalData for relevant patient information. Return as structured clinical summary with diagnoses, medications, lab results, and treatment history relevant to the query."
+    },
+    {
+      "toolName": "retrieve_insurance_details",
+      "description": "Look up patient's current insurance coverage and member information",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "patientId": {
+            "type": "string",
+            "description": "Patient identifier"
+          }
+        },
+        "required": [
+          "patientId"
+        ]
+      },
+      "synthesisGuidance": "Return patient insurance information from knowledgeBase.insuranceData including payer name, member ID, plan type, and coverage effective dates."
+    },
+    {
+      "toolName": "generate_crd_request",
+      "description": "Generate a structured CRD request with patient and medication details",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "patientId": {
+            "type": "string",
+            "description": "Patient identifier"
+          },
+          "medicationDetails": {
+            "type": "string",
+            "description": "Medication name, strength, and proposed therapy details"
+          },
+          "clinicalContext": {
+            "type": "string",
+            "description": "Relevant clinical context and indication"
+          }
+        },
+        "required": [
+          "patientId",
+          "medicationDetails",
+          "clinicalContext"
+        ]
+      },
+      "synthesisGuidance": "Create a formatted CRD request using knowledgeBase templates. Include patient demographics, insurance info, medication details, and clinical context in a structured format suitable for payer review."
+    }
+  ],
+  "knowledgeBase": {
+    "clinicalData": {
+      "patient_12345": {
+        "demographics": {
+          "name": "Sarah Johnson",
+          "dob": "1978-09-15",
+          "gender": "female"
+        },
+        "diagnoses": [
+          {
+            "code": "M05.9",
+            "description": "Rheumatoid arthritis, unspecified",
+            "onsetDate": "2022-03-15",
+            "severity": "moderate"
+          }
+        ],
+        "medications": [
+          {
+            "name": "Methotrexate",
+            "dose": "15mg weekly",
+            "startDate": "2022-04-01",
+            "duration": "18 months",
+            "response": "partial response, insufficient control"
+          },
+          {
+            "name": "Sulfasalazine",
+            "dose": "2g daily",
+            "startDate": "2022-08-15",
+            "duration": "12 months",
+            "response": "minimal improvement"
+          }
+        ],
+        "labResults": [
+          {
+            "date": "2024-01-15",
+            "test": "CRP",
+            "value": "12.5 mg/L",
+            "reference": "<3.0 mg/L",
+            "status": "elevated"
+          },
+          {
+            "date": "2024-01-15",
+            "test": "ESR",
+            "value": "45 mm/hr",
+            "reference": "<20 mm/hr",
+            "status": "elevated"
+          }
+        ],
+        "functionalStatus": "Limited mobility, difficulty with daily activities, moderate joint swelling and tenderness"
+      }
+    },
+    "insuranceData": {
+      "patient_12345": {
+        "payer": "Anthem Blue Cross Blue Shield",
+        "memberId": "ABC123456789",
+        "planType": "PPO",
+        "planName": "Anthem Blue Access PPO",
+        "effectiveDate": "2024-01-01",
+        "deductible": "$2000",
+        "pharmacyBenefit": "Express Scripts"
+      }
+    },
+    "templates": {
+      "crd_request": {
+        "format": "FHIR R4 CRD request bundle",
+        "required_elements": [
+          "patient",
+          "coverage",
+          "medication_request",
+          "practitioner",
+          "organization"
+        ]
+      }
+    }
+  }
+}

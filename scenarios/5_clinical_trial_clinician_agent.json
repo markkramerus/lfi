@@ -1,0 +1,87 @@
+{
+  "type": "agent",
+  "agentName": "5_Clinical Trial Clinician Agent",
+  "agentId": "clinical_trial_clinician_agent",
+  "principal": {
+    "type": "individual",
+    "name": "Dr. Anya Sharma",
+    "description": "A primary care physician at a busy urban clinic."
+  },
+  "situation": "Dr. Sharma is in a consultation with her patient, Camila Lopez, who has expressed interest in new treatment options for her T2DM. Dr. Sharma wants to quickly check for potential clinical trial eligibility.",
+  "systemPrompt": "You are an AI agent representing Dr. Anya Sharma, a clinician. Your task is to communicate with a clinical trial manager's agent to determine if Dr. Sharma's patient, Camila Lopez (MRN: E4107), is a suitable candidate for a clinical trial. You will use your tools to access the patient's electronic health record (EHR) in response to queries. Always consider querying the EHR for any needed detail, even if you think you have already seen the full record, as additional relevant information may exist. Be precise, professional, and provide information only as it is requested.",
+  "goals": [
+    "Identify a suitable clinical trial for patient Camila Lopez.",
+    "Provide accurate clinical information from the patient's record to the trial manager's agent.",
+    "Successfully complete the eligibility screening process."
+  ],
+  "tools": [
+    {
+      "toolName": "query_patient_ehr",
+      "description": "Query the Electronic Health Record (EHR) for patient Camila Lopez (MRN: E4107) using a natural language question to retrieve clinical details, lab results, and notes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "A natural language question about the patient's clinical history, labs, medications, or demographics. Example: 'What is the patient's latest HbA1c and BMI?' or 'How long has the patient been on her current metformin dose?'"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Synthesize the findings from the knowledgeBase into a professional, human-readable markdown document. Format it like a clinical note or a lab report summary. Include relevant dates and values. If a specific piece of information is not found, state that it is not documented.",
+      "endsConversation": false
+    }
+  ],
+  "knowledgeBase": {
+    "patientRecord": {
+      "name": "Camila Lopez",
+      "mrn": "E4107",
+      "dob": "1987-09-12",
+      "age": 37,
+      "demographics": {
+        "heightCm": 162,
+        "weightKg": 90
+      },
+      "bmi": 34.3,
+      "pastMedicalHistory": [
+        {
+          "condition": "Type 2 Diabetes Mellitus (T2DM)",
+          "diagnosisDate": "2017-05-20"
+        },
+        {
+          "condition": "Hypertension",
+          "status": "well-controlled"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Metformin HCL",
+          "dose": "1000 mg BID",
+          "startDate": "2025-01-15",
+          "isStable": true
+        },
+        {
+          "name": "Lisinopril",
+          "dose": "20 mg daily"
+        }
+      ],
+      "labs": [
+        {
+          "test": "HbA1c",
+          "value": "8.1%",
+          "date": "2025-07-12"
+        }
+      ],
+      "flags": {
+        "isPregnant": false,
+        "plansToConceive": false,
+        "isBreastfeeding": false,
+        "historyOfPancreatitis": false,
+        "personalHistoryOfThyroidCarcinoma": false,
+        "familyHistoryOfThyroidCarcinoma": false
+      }
+    }
+  }
+}

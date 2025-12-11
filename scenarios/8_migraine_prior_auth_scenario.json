@@ -1,0 +1,12 @@
+{
+  "type": "scenario",
+  "title": "8_Vyepti Injection Approval for Migraine",
+  "id": "vyepti_injection_prior_auth",
+  "description": "Multi-agent scenario for approving Vyepti injection for migraine treatment by reconciling patient's medication history from EHR with payer's personal and medical policies.",
+  "background": "A patient with chronic migraine has failed multiple preventive therapies. The provider requests approval for Vyepti (eptinezumab) injection. The process involves the EHR agent providing medication history and the payer agent evaluating eligibility, personal policy benefits, and medical necessity criteria.",
+  "agents": {
+    "initiating_agent_id": "migraine_prior_auth_ehr_agent",
+    "responding_agent_id": "migraine_prior_auth_payer_agent",
+    "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing City General Hospital EHR System. I'm reaching out to support a prior authorization request for Vyepti injection for our patient Alex Rivera regarding migraine treatment. What specific medication history or clinical details you require? I can retrieve and share targeted information as needed."
+  }
+}

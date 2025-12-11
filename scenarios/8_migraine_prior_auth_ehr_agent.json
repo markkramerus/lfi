@@ -1,0 +1,102 @@
+{
+  "type": "agent",
+  "agentName": "8_Migraine Prior Auth EHR Agent",
+  "agentId": "migraine_prior_auth_ehr_agent",
+  "principal": {
+    "type": "organization",
+    "name": "City General Hospital EHR System",
+    "description": "Electronic Health Record system managing patient clinical data"
+  },
+  "situation": "The EHR agent has access to the patient's complete medication and treatment history for migraine management.",
+  "systemPrompt": "You are an agent representing City General Hospital EHR System. You assist in providing verified patient medication history and clinical records. You are requesting Prior Authorization for Alex Rivera for Vyepti medication coverage. If identifiers are missing or ambiguous, ask for clarification. Use tools to fetch only targeted information as needed in the conversation, starting with high-level summaries and progressing to details based on requirements.",
+  "goals": [
+    "Provide accurate medication history",
+    "Share relevant clinical documentation progressively"
+  ],
+  "tools": [
+    {
+      "toolName": "search_patient_records",
+      "description": "Search patient medical records using natural language queries about medication history and treatments",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language search query (e.g., 'migraine medication history for patient MRN-123456 from last 2 years')"
+          },
+          "patientId": {
+            "type": "string",
+            "description": "Optional: Patient MRN if not included in query"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Search knowledgeBase.patientRecords matching the query. Return as a structured markdown report with timelines, medication names, dosages, durations, and outcomes. Focus on migraine-related treatments and avoid unnecessary details.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "generate_clinical_summary",
+      "description": "Generate a formal clinical summary for prior authorization purposes based on patient history",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "patientId": {
+            "type": "string",
+            "description": "Patient MRN"
+          },
+          "focus": {
+            "type": "string",
+            "description": "Focus area (e.g., 'migraine preventive therapy failure')"
+          }
+        },
+        "required": [
+          "patientId",
+          "focus"
+        ]
+      },
+      "synthesisGuidance": "Compile from knowledgeBase.patientRecords a professional clinical summary in markdown format, highlighting relevant history for treatment approval. Include dates, failed therapies, and rationale for next steps.",
+      "endsConversation": false
+    }
+  ],
+  "knowledgeBase": {
+    "patient": {
+      "mrn": "MRN-123456",
+      "name": "Alex Rivera",
+      "dob": "1980-05-12"
+    },
+    "patientRecords": [
+      {
+        "date": "2022-01-15",
+        "type": "diagnosis",
+        "notes": "Chronic migraine diagnosis, 15+ headache days per month"
+      },
+      {
+        "date": "2022-03-01",
+        "type": "medication_start",
+        "notes": "Started propranolol 40mg daily for migraine prevention"
+      },
+      {
+        "date": "2022-09-10",
+        "type": "medication_change",
+        "notes": "Switched to topiramate 50mg daily due to inadequate response"
+      },
+      {
+        "date": "2023-04-20",
+        "type": "medication_failure",
+        "notes": "Topiramate discontinued after 6 months; <50% reduction in headache frequency"
+      },
+      {
+        "date": "2023-06-05",
+        "type": "medication_start",
+        "notes": "Initiated Botox injections every 12 weeks"
+      },
+      {
+        "date": "2024-02-15",
+        "type": "medication_failure",
+        "notes": "Botox discontinued after 3 cycles; persistent severe migraines"
+      }
+    ]
+  }
+}

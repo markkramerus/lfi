@@ -1,0 +1,129 @@
+{
+  "type": "agent",
+  "agentName": "10_Vision Screen Pediatrician Agent",
+  "agentId": "vision_screen_pediatrician_agent",
+  "principal": {
+    "type": "individual",
+    "name": "Dr. James Roberts, MD",
+    "description": "Pediatrician at Valley Pediatrics managing Emma's primary care."
+  },
+  "situation": "You're receiving vision screening results from the school nurse about your patient Emma Chen.",
+  "systemPrompt": "You are a pediatrician receiving school vision screening results. You need to evaluate the findings, determine appropriate next steps, and coordinate care. Consider insurance requirements for specialist referrals. Be aware that school screening methods may differ from clinical standards. Ask clarifying questions about screening conditions and methods used.",
+  "goals": [
+    "Understand screening results and methods",
+    "Determine clinical significance",
+    "Plan appropriate follow-up",
+    "Coordinate specialist referral if needed"
+  ],
+  "tools": [
+    {
+      "toolName": "retrieve_patient_record",
+      "description": "Access patient's medical record and history",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "patientId": {
+            "type": "string"
+          },
+          "recordType": {
+            "type": "string"
+          }
+        }
+      },
+      "synthesisGuidance": "Return record showing no previous vision concerns, normal development, family history of maternal myopia requiring glasses at age 8."
+    },
+    {
+      "toolName": "check_insurance_requirements",
+      "description": "Verify insurance coverage and referral requirements",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "insuranceId": {
+            "type": "string"
+          },
+          "serviceType": {
+            "type": "string"
+          }
+        }
+      },
+      "synthesisGuidance": "Return requirement for PCP referral before ophthalmology, covered services include comprehensive eye exam and corrective lenses if prescribed."
+    },
+    {
+      "toolName": "create_referral",
+      "description": "Generate referral to specialist",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "patientId",
+          "specialistType",
+          "reason"
+        ],
+        "properties": {
+          "patientId": {
+            "type": "string"
+          },
+          "specialistType": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "urgency": {
+            "type": "string"
+          },
+          "preferredProvider": {
+            "type": "string"
+          }
+        }
+      },
+      "synthesisGuidance": "Generate referral to pediatric ophthalmology with authorization number, including screening results and family history.",
+      "endsConversation": true,
+      "conversationEndStatus": "success"
+    },
+    {
+      "toolName": "schedule_follow_up",
+      "description": "Schedule follow-up appointment",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "patientId",
+          "appointmentType"
+        ],
+        "properties": {
+          "patientId": {
+            "type": "string"
+          },
+          "appointmentType": {
+            "type": "string"
+          },
+          "timeframe": {
+            "type": "string"
+          }
+        }
+      },
+      "synthesisGuidance": "Confirm follow-up scheduled in 3 months to review specialist findings and treatment plan."
+    }
+  ],
+  "knowledgeBase": {
+    "patientRecord": {
+      "name": "Emma Chen",
+      "dob": "2017-03-15",
+      "mrn": "PC-445678",
+      "insurance": "BlueCross PPO",
+      "lastVisit": "2024-08-20 - Well child check",
+      "familyHistory": "Mother - myopia onset age 8, Father - normal vision"
+    },
+    "clinicalGuidelines": {
+      "visionScreening": "AAP recommends comprehensive eye exam for failed screening",
+      "referralCriteria": "20/40 or worse warrants ophthalmology evaluation",
+      "riskFactors": "Family history of early myopia increases risk"
+    },
+    "preferredSpecialists": [
+      {
+        "name": "Dr. Amy Wong, Pediatric Ophthalmology",
+        "location": "Children's Eye Center",
+        "waitTime": "2-3 weeks"
+      }
+    ]
+  }
+}

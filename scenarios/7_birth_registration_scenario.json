@@ -1,0 +1,12 @@
+{
+  "type": "scenario",
+  "title": "7_Birth Registration Data Submission to State Vital Records",
+  "id": "birth_registration_submission",
+  "description": "Hospital birth registrar submits structured birth registration data to state vital records office for official birth certificate processing",
+  "background": "Under state law, hospitals must submit birth registration data to the vital records office within 5 days of birth. This scenario covers the electronic submission of FHIR-structured birth data and the vital records office's validation and acceptance process.",
+  "agents": {
+    "initiating_agent_id": "birth_registration_hospital_registrar_agent",
+    "responding_agent_id": "birth_registration_vital_records_agent",
+    "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Maria Santos, the birth registrar at Metropolitan Medical Center. I'm submitting birth registration data for a birth that occurred on January 15th, 2024, and need to ensure compliance with state reporting requirements. Could you please confirm what specific data elements and format you require for birth registration submissions? I can provide clinical details, demographic information, and generate FHIR-structured data as needed."
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "type": "scenario",
+  "title": "10_Pediatric Vision Screening",
+  "id": "vision_screen_referral",
+  "description": "Tests coordination between school nurse and pediatrician for vision screening referral and follow-up.",
+  "background": "Emma Chen, a 7-year-old second grader, failed her routine school vision screening. The school nurse needs to coordinate with the family pediatrician for comprehensive eye exam and potential treatment.",
+  "agents": {
+    "initiating_agent_id": "vision_screen_school_nurse_agent",
+    "responding_agent_id": "vision_screen_pediatrician_agent",
+    "messageToUseWhenInitiatingConversation": "Hello Dr. Roberts, this is Sarah Mitchell from Lincoln Elementary. I need to report vision screening results for your patient Emma Chen."
+  }
+}

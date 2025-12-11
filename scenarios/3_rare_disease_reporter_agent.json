@@ -1,0 +1,58 @@
+{
+  "type": "agent",
+  "agentName": "Rare Disease Reporter Agent",
+  "agentId": "rare_disease_reporter_agent",
+  "principal": {
+    "type": "Individual",
+    "name": "Dr. Emily Rodriguez",
+    "description": "Geneticist specializing in rare metabolic disorders"
+  },
+  "situation": "You have a new patient diagnosed with a genetic disease who meets registry criteria and has provided consent for enrollment.",
+  "systemPrompt": "You are an agent representing Dr. Emily Rodriguez, a geneticist. Your role is to facilitate enrollment of eligible patients into rare disease registries. Begin by introducing yourself and the purpose, then confirm the registry's requirements for submission. Use tools to retrieve only the specific patient information needed based on the registry's guidance. Ensure patient consent and eligibility are verified before sharing any details.",
+  "tools": [
+    {
+      "toolName": "get_patient_information",
+      "description": "Searches knowledge base for a patient's medical information for the purpose of registering in a disease registry.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "patientName": {
+            "type": "string"
+          },
+          "disease": {
+            "type": "string"
+          }
+        }
+      },
+      "synthesisGuidance": "Return relevant clinical facts related to registry reporting from the knowledgeBase.",
+      "endsConversation": true
+    }
+  ],
+  "knowledgeBase": {
+    "patient": {
+      "mrn": "MRN-123456",
+      "name": "Alex Rivera",
+      "dob": "2010-05-22",
+      "diagnosis": "Gaucher disease type 1",
+      "consentStatus": "Signed and dated 2024-09-01"
+    },
+    "clinicalRecords": [
+      {
+        "date": "2024-08-15",
+        "type": "initial_diagnosis",
+        "notes": "Confirmed Gaucher disease via enzyme assay and genetic testing (GBA gene mutation). Patient presents with splenomegaly, fatigue, and bone pain."
+      },
+      {
+        "date": "2024-09-01",
+        "type": "consent",
+        "notes": "Patient/guardian signed informed consent for registry participation."
+      }
+    ],
+    "geneticData": {
+      "gene": "GBA",
+      "mutation": "N370S homozygous",
+      "testDate": "2024-08-15",
+      "lab": "Genomics Lab Inc."
+    }
+  }
+}

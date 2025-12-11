@@ -1,0 +1,185 @@
+{
+  "type": "agent",
+  "agentName": "7_Birth Registration Vital Records Agent",
+  "agentId": "birth_registration_vital_records_agent",
+  "principal": {
+    "type": "organization",
+    "name": "Illinois Department of Public Health - Vital Records",
+    "description": "State vital records office responsible for processing birth registrations and issuing official birth certificates"
+  },
+  "situation": "Processing incoming birth registration submissions from hospitals and birthing facilities across the state. Must validate submissions meet legal requirements before accepting for official birth certificate processing.",
+  "systemPrompt": "You are an agent representing the Illinois Department of Public Health Vital Records Office. When hospitals submit birth registrations, first verify key identifiers: child's full name and birth date, mother's full name and date of birth, birth facility name and date of occurrence. Confirm the submitting facility's authority and registration timeline compliance. If any required identifiers are missing or unclear, request clarification before proceeding. Use your tools to check data against state requirements, validate formatting, and process acceptable submissions. Only accept complete, validated registrations that meet legal standards.",
+  "goals": [
+    "Verify birth registration data meets state legal requirements",
+    "Validate submitting facility authority and timeline compliance",
+    "Process complete registrations for official birth certificate creation",
+    "Identify and resolve data quality issues before acceptance"
+  ],
+  "tools": [
+    {
+      "toolName": "validate_facility_authority",
+      "description": "Validate that submitting facility has authority to submit birth registrations",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "facilityName": {
+            "type": "string",
+            "description": "Name of the submitting facility"
+          },
+          "npi": {
+            "type": "string",
+            "description": "National Provider Identifier of facility"
+          }
+        },
+        "required": [
+          "facilityName"
+        ]
+      },
+      "synthesisGuidance": "Check knowledgeBase.authorizedFacilities for facility credentials and registration authority. Return JSON with validation status, facility details, and any restrictions or notes.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "check_legal_requirements",
+      "description": "Check birth registration data against Illinois state legal requirements",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "dataElements": {
+            "type": "object",
+            "description": "Birth registration data elements to validate"
+          },
+          "submissionDate": {
+            "type": "string",
+            "description": "Date of registration submission"
+          },
+          "birthDate": {
+            "type": "string",
+            "description": "Date of birth occurrence"
+          }
+        },
+        "required": [
+          "dataElements",
+          "birthDate"
+        ]
+      },
+      "synthesisGuidance": "Validate against knowledgeBase.legalRequirements including mandatory fields, data formats, and submission timeline. Return comprehensive validation report as JSON with compliance status, missing elements, and corrective actions needed.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "accept_birth_registration",
+      "description": "Accept valid birth registration and generate official registration number",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "childName": {
+            "type": "string",
+            "description": "Full name of child"
+          },
+          "birthDate": {
+            "type": "string",
+            "description": "Date of birth"
+          },
+          "motherName": {
+            "type": "string",
+            "description": "Full name of mother"
+          },
+          "acceptanceNotes": {
+            "type": "string",
+            "description": "Any notes about the registration acceptance"
+          }
+        },
+        "required": [
+          "childName",
+          "birthDate",
+          "motherName"
+        ]
+      },
+      "synthesisGuidance": "Generate official birth registration acceptance using knowledgeBase.templates.acceptance. Include new registration number from knowledgeBase.registrationSequence and processing timeline. Format as formal acceptance letter.",
+      "endsConversation": true,
+      "conversationEndStatus": "success"
+    },
+    {
+      "toolName": "reject_birth_registration",
+      "description": "Reject incomplete or invalid birth registration with detailed explanation",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "rejectionReason": {
+            "type": "string",
+            "description": "Primary reason for rejection"
+          },
+          "missingElements": {
+            "type": "array",
+            "description": "List of missing required data elements"
+          },
+          "correctionInstructions": {
+            "type": "string",
+            "description": "Instructions for correcting and resubmitting"
+          }
+        },
+        "required": [
+          "rejectionReason"
+        ]
+      },
+      "synthesisGuidance": "Generate formal rejection notice using knowledgeBase.templates.rejection. Include specific deficiencies, legal requirements not met, and clear resubmission instructions. Be professional but thorough in explaining compliance requirements.",
+      "endsConversation": true,
+      "conversationEndStatus": "failure"
+    }
+  ],
+  "knowledgeBase": {
+    "legalRequirements": {
+      "mandatory_fields": [
+        "child_full_name",
+        "birth_date",
+        "birth_time",
+        "birth_place",
+        "mother_full_name",
+        "mother_dob",
+        "mother_residence",
+        "gestational_age",
+        "birth_attendant",
+        "delivery_method"
+      ],
+      "submission_timeline": {
+        "hospital_births": "5 days",
+        "home_births": "10 days",
+        "late_penalty": "applies after 30 days"
+      },
+      "data_formats": {
+        "dates": "YYYY-MM-DD",
+        "names": "proper case, no special characters",
+        "addresses": "USPS standard format"
+      }
+    },
+    "authorizedFacilities": {
+      "Metropolitan Medical Center": {
+        "npi": "1234567890",
+        "license": "IL-HOSP-2024-001",
+        "status": "active",
+        "birth_volume": "high",
+        "last_audit": "2023-08-15",
+        "compliance_score": "excellent"
+      }
+    },
+    "registrationSequence": "IL-2024-",
+    "templates": {
+      "acceptance": {
+        "header": "ILLINOIS DEPARTMENT OF PUBLIC HEALTH",
+        "title": "BIRTH REGISTRATION ACCEPTANCE",
+        "processing_days": 10,
+        "certificate_fee": "$15.00"
+      },
+      "rejection": {
+        "header": "ILLINOIS DEPARTMENT OF PUBLIC HEALTH",
+        "title": "BIRTH REGISTRATION REJECTION NOTICE",
+        "appeal_period": "30 days",
+        "contact_info": "vital.records@illinois.gov"
+      }
+    },
+    "statistics": {
+      "annual_registrations": 155000,
+      "average_processing_time": "7 days",
+      "rejection_rate": "3.2%"
+    }
+  }
+}

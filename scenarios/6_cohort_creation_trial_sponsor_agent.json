@@ -1,0 +1,94 @@
+{
+  "type": "agent",
+  "agentName": "6_Cohort Creation Trial Sponsor Agent",
+  "agentId": "cohort_creation_trial_sponsor_agent",
+  "principal": {
+    "type": "organization",
+    "name": "InnoTrials Research",
+    "description": "Clinical research organization sponsoring a new therapeutic trial"
+  },
+  "situation": "The organization is in the planning phase of a Phase III clinical trial for a novel cardiovascular medication and needs to identify eligible patient cohorts from partner provider networks.",
+  "systemPrompt": "You are an agent representing InnoTrials Research, a clinical research organization. Your role is to collaborate with provider organizations to define and refine patient cohorts for clinical trials. Start by introducing yourself and the trial objectives, then confirm the provider's capabilities and preferred process for cohort analytics. Use tools to retrieve and share study criteria and eligibility details as needed. Always emphasize de-identified data handling and compliance. Do not share full study protocols upfront; negotiate what analytics parameters are required first.",
+  "goals": [
+    "Define trial eligibility criteria",
+    "Collaborate on cohort analytics queries",
+    "Finalize cohort parameters for recruitment"
+  ],
+  "tools": [
+    {
+      "toolName": "retrieve_study_criteria",
+      "description": "Retrieve detailed inclusion and exclusion criteria for the clinical trial using natural language queries",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language query about trial criteria (e.g., 'inclusion criteria for cardiovascular patients aged 50-70')"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Search the knowledgeBase for matching trial criteria and return as a structured markdown document with sections for inclusion, exclusion, demographics, and endpoints. Use professional research language and highlight key parameters for analytics translation.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "generate_cohort_specification",
+      "description": "Generate a formal cohort specification document based on agreed parameters before concluding the collaboration",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "criteriaSummary": {
+            "type": "string",
+            "description": "Summary of the finalized inclusion/exclusion criteria and cohort parameters"
+          },
+          "estimatedSize": {
+            "type": "number",
+            "description": "Estimated cohort size from analytics"
+          },
+          "trialId": {
+            "type": "string",
+            "description": "Identifier for the clinical trial"
+          }
+        },
+        "required": [
+          "criteriaSummary",
+          "trialId"
+        ]
+      },
+      "synthesisGuidance": "Create a professional cohort specification report using templates from knowledgeBase. Include criteria details, estimated demographics, compliance notes, and next steps for recruitment. Format as a markdown document suitable for signing off.",
+      "endsConversation": true,
+      "conversationEndStatus": "success"
+    }
+  ],
+  "knowledgeBase": {
+    "trialId": "CT-2024-CARDIO-001",
+    "studyOverview": {
+      "title": "Efficacy of Novel Antihypertensive in Moderate Hypertension",
+      "phase": "III",
+      "targetPopulation": "Adults with moderate hypertension (SBP 140-159 mmHg)",
+      "endpoints": [
+        "Blood pressure reduction",
+        "Adverse event rates"
+      ]
+    },
+    "inclusionCriteria": [
+      "Age 50-70 years",
+      "Diagnosed hypertension for at least 1 year",
+      "SBP 140-159 mmHg on current therapy",
+      "No recent cardiovascular events"
+    ],
+    "exclusionCriteria": [
+      "Severe hypertension (SBP >180 mmHg)",
+      "Type 1 diabetes",
+      "Current participation in other trials",
+      "Pregnancy or planning pregnancy"
+    ],
+    "demographicPreferences": {
+      "genderBalance": "Balanced representation",
+      "ethnicDiversity": "Inclusive of diverse populations",
+      "geographic": "Urban and rural mix"
+    }
+  }
+}

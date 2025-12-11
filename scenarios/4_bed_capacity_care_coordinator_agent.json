@@ -1,0 +1,131 @@
+{
+  "type": "agent",
+  "agentName": "4_Bed Capacity Care Coordinator Agent",
+  "agentId": "bed_capacity_care_coordinator_agent",
+  "principal": {
+    "type": "individual",
+    "name": "Sarah Ramirez",
+    "description": "Care coordination specialist at City General Hospital"
+  },
+  "situation": "A patient requires transfer to a specialized facility for advanced care; initial contact to check bed availability.",
+  "systemPrompt": "You are an agent representing Sarah Ramirez, a care coordinator at City General Hospital. Your role is to inquire about bed availability for patient transfers to partner hospitals using FHIR SAFR protocols for secure verification. Start by introducing yourself and the general purpose, then confirm the receiving facility's identity using SAFR-compliant authentication patterns (e.g., organizational credentials, signed messages). Only share FHIR Patient resource identifiers (name, DOB, MRN) after mutual verification. Use tools to retrieve FHIR resources only as needed for the discussion, following progressive disclosure to minimize sensitive data exposure. Focus on SAFR principles: verify before disclose, request only necessary data.",
+  "goals": [
+    "Verify receiving hospital identity and transfer requirements",
+    "Provide necessary patient information securely",
+    "Confirm bed availability and transfer logistics"
+  ],
+  "tools": [
+    {
+      "toolName": "retrieve_patient_details",
+      "description": "Retrieve FHIR Patient and related resources (demographics, ServiceRequest for transfer) from the hospital's FHIR server using natural language query, following SAFR access control",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language query for FHIR resources (e.g., 'transfer ServiceRequest for Patient John Doe MRN-12345')"
+          },
+          "patientId": {
+            "type": "string",
+            "description": "Optional: Patient MRN if not in query"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Search knowledgeBase.fhirResources for matching Patient, ServiceRequest, and Condition resources. Return as FHIR JSON bundle with key elements: Patient demographics, ServiceRequest status/priority, Condition summary, and transfer rationale. Apply SAFR filtering: include only elements necessary for bed availability verification, redact sensitive clinical details."
+    },
+    {
+      "toolName": "confirm_transfer_readiness",
+      "description": "Generate FHIR Task resource confirming patient transfer readiness and create transfer summary Bundle",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "patientId": {
+            "type": "string",
+            "description": "Patient logical ID from FHIR Patient resource"
+          },
+          "receivingFacility": {
+            "type": "string",
+            "description": "Name of receiving hospital"
+          },
+          "bedType": {
+            "type": "string",
+            "description": "Type of bed needed (e.g., ICU, general)"
+          }
+        },
+        "required": [
+          "patientId",
+          "receivingFacility"
+        ]
+      },
+      "synthesisGuidance": "Using knowledgeBase.transferProtocols and FHIR profiles, generate a FHIR Bundle containing Task (transfer coordination), ServiceRequest (bed placement), and Patient references. Include care needs, estimated arrival, and digital signature for SAFR compliance. Format as valid FHIR JSON with narrative summary in markdown.",
+      "endsConversation": true,
+      "conversationEndStatus": "success"
+    }
+  ],
+  "knowledgeBase": {
+    "fhirResources": {
+      "Patient/MRN-12345": {
+        "resourceType": "Patient",
+        "id": "MRN-12345",
+        "identifier": [
+          {
+            "system": "http://hospital.example/mrn",
+            "value": "MRN-12345"
+          }
+        ],
+        "name": [
+          {
+            "text": "John Doe"
+          }
+        ],
+        "birthDate": "1975-05-20",
+        "managingOrganization": {
+          "display": "City General Hospital"
+        }
+      },
+      "ServiceRequest/transfer-001": {
+        "resourceType": "ServiceRequest",
+        "id": "transfer-001",
+        "status": "active",
+        "intent": "order",
+        "subject": {
+          "reference": "Patient/MRN-12345"
+        },
+        "code": {
+          "text": "Patient transfer to specialized facility"
+        },
+        "reasonCode": [
+          {
+            "text": "Acute respiratory failure requiring ECMO"
+          }
+        ],
+        "priority": "routine"
+      },
+      "Condition/respiratory-failure": {
+        "resourceType": "Condition",
+        "subject": {
+          "reference": "Patient/MRN-12345"
+        },
+        "code": {
+          "text": "Acute respiratory failure"
+        },
+        "clinicalStatus": "active"
+      }
+    },
+    "transferProtocols": {
+      "fhirProfiles": [
+        "http://hl7.org/fhir/us/safr/StructureDefinition/safr-task"
+      ],
+      "verificationSteps": [
+        "SAFR identity verification via signed FHIR message",
+        "Confirm patient identity using Patient resource match",
+        "Validate receiving facility Organization resource"
+      ],
+      "standardTimeline": "Transfer within 48 hours of bed confirmation"
+    }
+  },
+  "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Sarah Ramirez, care coordination specialist at City General Hospital. I'm reaching out to inquire about bed availability for a patient transfer to your facility. Could we first confirm your identity as the bed management team and discuss what patient information you need for verification before I share details?"
+}

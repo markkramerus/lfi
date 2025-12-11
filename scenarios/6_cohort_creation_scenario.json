@@ -1,0 +1,12 @@
+{
+  "type": "scenario",
+  "title": "6_Clinical Trial Cohort Creation Collaboration",
+  "id": "cohort_creation_collaboration",
+  "description": "A clinical trial creator collaborates with a provider organization to access analytics and identify suitable patient cohorts for a research study.",
+  "background": "In this scenario, a representative from a clinical research organization (CRO) initiates contact with a healthcare provider organization to discuss and support the creation of patient cohorts for an upcoming clinical trial. The provider has access to de-identified analytics tools for querying population data, while the trial creator provides study criteria. The conversation focuses on negotiating data requirements, running analytics queries, and finalizing cohort parameters without sharing identifiable information.",
+  "agents": {
+    "initiating_agent_id": "cohort_creation_trial_sponsor_agent",
+    "responding_agent_id": "cohort_creation_provider_analytics_agent",
+    "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing InnoTrials Research. We're developing a Phase III clinical trial for a novel cardiovascular medication and are reaching out to collaborate on identifying suitable patient cohorts from your network. Could we confirm your analytics capabilities for de-identified population queries and discuss the preferred process for sharing trial criteria?"
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "type": "agent",
+  "agentName": "8_Migraine Prior Auth Payer Agent",
+  "agentId": "migraine_prior_auth_payer_agent",
+  "principal": {
+    "type": "organization",
+    "name": "Blue Horizon Insurance",
+    "description": "Health insurance payer handling prior authorizations and claims"
+  },
+  "situation": "The payer agent coordinates the approval process by verifying eligibility, evaluating personal policy benefits, and applying medical necessity criteria for migraine treatments.",
+  "systemPrompt": "You are an agent representing Blue Horizon Insurance. You coordinate prior authorization requests by verifying details and applying both personal policy and medical policy criteria. First, confirm the patient's identity (full name, DOB, member ID), provider details, and request specifics (e.g., Vyepti injection for migraine). If anything is unclear, request clarification. Use tools to check basic coverage, verify personal policy benefits (copays, limits, exclusions), and evaluate medical necessity criteria (failed therapies, diagnosis). Ensure progressive information exchange and make evidence-based decisions.",
+  "goals": [
+    "Verify request and patient eligibility",
+    "Check personal policy coverage for Vyepti",
+    "Evaluate medical necessity against clinical criteria",
+    "Issue final approval or denial decision"
+  ],
+  "tools": [
+    {
+      "toolName": "check_member_eligibility",
+      "description": "Check patient eligibility and basic coverage for a specific treatment using natural language query",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language query (e.g., 'eligibility for Vyepti injection under member ID 789012 for migraine')"
+          },
+          "memberId": {
+            "type": "string",
+            "description": "Optional: Member ID if not in query"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Query knowledgeBase.memberCoverage for eligibility details. Return as JSON with fields for coverage status, copay, prior auth requirements, and any exclusions. Be concise and factual.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "review_personal_policy",
+      "description": "Review personal policy benefits for a specific treatment",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language query (e.g., 'coverage for Vyepti under member 789012 PPO plan')"
+          },
+          "memberId": {
+            "type": "string",
+            "description": "Optional: Member ID"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Consult knowledgeBase.personalPolicies for the member. Return as JSON with coverage status, prior auth needs, cost-sharing, and any personal riders or exclusions.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "evaluate_medical_policy",
+      "description": "Evaluate if patient meets medical policy criteria for a treatment using patient history",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "historySummary": {
+            "type": "string",
+            "description": "Summary of patient's medication and treatment history"
+          },
+          "treatment": {
+            "type": "string",
+            "description": "Treatment under review (e.g., Vyepti for migraine)"
+          }
+        },
+        "required": [
+          "historySummary",
+          "treatment"
+        ]
+      },
+      "synthesisGuidance": "Compare the provided history against knowledgeBase.medicalPolicies for the treatment. Return as JSON with metCriteria array, unmetCriteria, and overall recommendation (approve/deny/pending). Include policy references and rationale.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "approve_request",
+      "description": "Approve the prior authorization request and generate approval artifacts. Call this before informing of the outcome.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "description": "Member ID"
+          },
+          "treatment": {
+            "type": "string",
+            "description": "Approved treatment (e.g., Vyepti injection)"
+          },
+          "authReason": {
+            "type": "string",
+            "description": "Reason for approval"
+          },
+          "validityPeriod": {
+            "type": "string",
+            "description": "Validity period (e.g., '12 months')"
+          }
+        },
+        "required": [
+          "memberId",
+          "treatment",
+          "authReason"
+        ]
+      },
+      "synthesisGuidance": "Generate a formal approval letter in markdown format using knowledgeBase.approvalTemplate. Include authorization number, effective dates, and instructions. Be professional and comprehensive.",
+      "endsConversation": true,
+      "conversationEndStatus": "success"
+    },
+    {
+      "toolName": "deny_request",
+      "description": "Deny the prior authorization request and generate denial artifacts. Call this before informing of the outcome.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "description": "Member ID"
+          },
+          "treatment": {
+            "type": "string",
+            "description": "Denied treatment"
+          },
+          "denialReason": {
+            "type": "string",
+            "description": "Reason for denial"
+          }
+        },
+        "required": [
+          "memberId",
+          "treatment",
+          "denialReason"
+        ]
+      },
+      "synthesisGuidance": "Generate a formal denial letter in markdown format using knowledgeBase.denialTemplate. Include appeal rights, specific policy references, and next steps.",
+      "endsConversation": true,
+      "conversationEndStatus": "failure"
+    }
+  ],
+  "knowledgeBase": {
+    "patient": {
+      "name": "Alex Rivera",
+      "dob": "1980-05-12"
+    },
+    "memberCoverage": {
+      "789012": {
+        "planType": "PPO",
+        "status": "active"
+      }
+    },
+    "personalPolicies": {
+      "789012": {
+        "plan": "PPO Gold",
+        "migraineBenefits": {
+          "preventives": "Covered with prior auth",
+          "injectables": "100% after deductible for Vyepti if medically necessary",
+          "limits": "Max 4 injections per year",
+          "exclusions": "None"
+        }
+      }
+    },
+    "medicalPolicies": {
+      "vyepti_migraine": {
+        "criteria": [
+          "Diagnosis of chronic migraine (15+ headache days/month)",
+          "Failure of at least 2 oral preventive therapies (e.g., propranolol, topiramate)",
+          "Failure of or contraindication to Botox if applicable",
+          "No contraindications to Vyepti (e.g., severe cardiovascular disease)"
+        ],
+        "guidelines": "Based on FDA approval and payer's evidence-based policy; requires documentation of inadequate response defined as <50% reduction in headache days.",
+        "approvalThreshold": "All criteria must be met for step therapy completion"
+      }
+    },
+    "approvalTemplate": "Dear Provider, Authorization approved for [treatment] for member [memberId]. Auth #: [number]. Valid: [period].",
+    "denialTemplate": "Dear Provider, Request for [treatment] denied for member [memberId]. Reason: [reason]. Appeal instructions enclosed."
+  }
+}

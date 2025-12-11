@@ -1,0 +1,13 @@
+{
+  "type": "scenario",
+  "title": "Coverage Requirements Discovery - Medication",
+  "id": "coverage_requirements_discovery_medication",
+  "description": "Dr. Patel is prescribing Humira (adalimumab) for a patient, Sarah Johnson, with rheumatoid arthritis. The provider's system needs to check coverage requirements before completing the prescription to avoid delays. The system queries Anthem Blue Cross Blue Shield's Coverage Requirements Discovery (CRD) service to understand coverage requirements and documentation needs for Humira before prescribing, enabling proactive compliance with payer requirements.",
+  "background": "Providers can query payers in real-time during clinical workflows to discover coverage requirements, prior authorization needs, and required documentation. This reduces downstream prior authorization delays and rejections by surfacing requirements at the point of care.",
+  "agents": {
+    "initiating_agent_id": "coverage_discovery_provider_agent",
+    "responding_agent_id": "coverage_discovery_payer_agent",
+    "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing Regional Medical Center. I'm reaching out regarding coverage requirements for a medication our clinician is prescribing. We have a patient, Sarah Johnson (DOB: 09/15/1978, Member ID: ABC123456789 with Anthem BCBS), for whom Dr. Patel wants to prescribe Humira (adalimumab) for rheumatoid arthritis. Could you confirm what coverage requirements and documentation you need for this medication? I can provide clinical context and treatment history as needed."
+  },
+  "knowledgeBase": {}
+}

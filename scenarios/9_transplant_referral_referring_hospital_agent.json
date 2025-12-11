@@ -1,0 +1,239 @@
+{
+  "type": "agent",
+  "agentName": "9_Transplant Referral Referring Hospital Agent",
+  "agentId": "transplant_referral_referring_hospital_agent",
+  "principal": {
+    "type": "organization",
+    "name": "Regional General Hospital",
+    "description": "Community hospital with EHR system providing patient data for external referrals"
+  },
+  "situation": "Patient John Doe (MRN: RH-67890, DOB: 1980-05-15) has been referred to a transplant center for kidney evaluation. The EHR contains recent labs, imaging, and HLA typing, but formats may differ from transplant center standards.",
+  "systemPrompt": "You are an agent representing Regional General Hospital. Your role is to assist external transplant centers by providing relevant patient data from our EHR for referral evaluations. First, verify the requesting organization's identity and authority (confirm NPI or institutional affiliation), then confirm patient details (full name, DOB, MRN) match our records exactly. If any identifiers are missing or ambiguous, request clarification before retrieving any data. Once verified, negotiate the specific data needed (e.g., renal function labs from last 6 months, recent kidney imaging, HLA typing) and preferred format. For HLA data, note that our system provides antigen-based reporting and discuss if allele-level conversion or additional testing is needed. Use tools to fetch targeted information progressively—start with summaries and provide full reports only when specifically requested. Share data as attachments on messages, not through tools. When all requested data has been provided, use the confirmation tool to generate formal release authorization before ending the conversation.",
+  "goals": [
+    "Verify requesting transplant center and patient identity",
+    "Provide targeted labs, imaging, and HLA data upon request",
+    "Facilitate HLA format normalization through conversation"
+  ],
+  "tools": [
+    {
+      "toolName": "search_patient_ehr",
+      "description": "Search the EHR system using natural language queries to find patient records, labs, or imaging reports",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language search query (e.g., 'renal function labs for patient RH-67890 from September 2024')"
+          },
+          "patientId": {
+            "type": "string",
+            "description": "Optional: Patient MRN if not included in query"
+          },
+          "dateRange": {
+            "type": "string",
+            "description": "Optional: Date range for records (e.g., 'last 6 months')"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Search knowledgeBase.patientRecords matching the query parameters. Return relevant clinical data as structured markdown with dates, values, reference ranges, and interpretations. Include only data relevant to the specific request—avoid comprehensive dumps.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "retrieve_imaging_reports",
+      "description": "Retrieve detailed imaging reports and findings using natural language query",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language query for imaging (e.g., 'kidney ultrasound reports for patient RH-67890 from last 3 months')"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Search knowledgeBase.patientRecords.imaging matching the query. Return as professional radiology report format with date, modality, findings, impression, and radiologist signature. Include relevant images descriptions if available.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "retrieve_hla_typing",
+      "description": "Retrieve HLA typing results from the immunology database using natural language query",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language query for HLA data (e.g., 'HLA typing for patient RH-67890 including collection date and methodology')"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Search knowledgeBase.patientRecords.hlaTyping matching the query. Return as structured immunology report in antigen format with locus breakdown (A, B, DR), collection date, testing lab, and resolution level. Note if high-resolution typing is available or if only serologic/antigen level data exists.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "confirm_data_release",
+      "description": "Formally confirm release of patient data for transplant evaluation and generate authorization documentation",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "patientId": {
+            "type": "string",
+            "description": "Patient MRN"
+          },
+          "requestingOrganization": {
+            "type": "string",
+            "description": "Name of requesting transplant center"
+          },
+          "dataTypesReleased": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of data types released (e.g., ['labs', 'imaging', 'HLA'])"
+          }
+        },
+        "required": [
+          "patientId",
+          "requestingOrganization",
+          "dataTypesReleased"
+        ]
+      },
+      "synthesisGuidance": "Generate formal data release authorization using knowledgeBase.ehrPolicies. Include patient identifiers, requesting organization, data types released, date, and compliance statements (HIPAA, etc.). Format as official hospital document.",
+      "endsConversation": true,
+      "conversationEndStatus": "neutral"
+    }
+  ],
+  "knowledgeBase": {
+    "patientRecords": {
+      "RH-67890": {
+        "name": "John Doe",
+        "dob": "1980-05-15",
+        "mrn": "RH-67890",
+        "labs": [
+          {
+            "date": "2024-09-15",
+            "type": "renal_function",
+            "creatinine": 3.2,
+            "referenceRange": "0.6-1.2 mg/dL",
+            "gfr": 18,
+            "referenceRangeGfr": ">90 mL/min",
+            "interpretation": "Stage 4 CKD",
+            "provider": "Dr. Emily Carter"
+          },
+          {
+            "date": "2024-08-20",
+            "type": "renal_function",
+            "creatinine": 2.8,
+            "gfr": 22,
+            "interpretation": "Progressive decline from prior 28 mL/min"
+          },
+          {
+            "date": "2024-09-15",
+            "type": "complete_blood_count",
+            "hemoglobin": 10.2,
+            "hematocrit": 31.5,
+            "interpretation": "Anemia of chronic disease"
+          },
+          {
+            "date": "2024-09-10",
+            "type": "urinalysis",
+            "protein": "3+",
+            "rbc": "Numerous",
+            "interpretation": "Nephrotic range proteinuria"
+          }
+        ],
+        "imaging": [
+          {
+            "date": "2024-09-20",
+            "type": "kidney_ultrasound",
+            "modality": "Ultrasound",
+            "findings": "Bilateral renal atrophy with increased echogenicity. Right kidney 8.2 cm, left kidney 8.0 cm (both below normal). No hydronephrosis or obstruction. No renal calculi.",
+            "impression": "Chronic kidney disease with bilateral small kidneys",
+            "radiologist": "Dr. Michael Lee, MD"
+          },
+          {
+            "date": "2024-07-15",
+            "type": "abdominal_ct",
+            "modality": "CT with contrast",
+            "findings": "Small kidneys with thinned cortex. No masses or cysts. Mild ascites.",
+            "impression": "Findings consistent with end-stage renal disease",
+            "radiologist": "Dr. Sarah Kim, MD"
+          }
+        ],
+        "hlaTyping": {
+          "antigens": {
+            "A": [
+              "A1",
+              "A2"
+            ],
+            "B": [
+              "B8",
+              "B44"
+            ],
+            "C": [
+              "Cw7"
+            ],
+            "DR": [
+              "DR3",
+              "DR4"
+            ],
+            "DQ": [
+              "DQ2",
+              "DQ8"
+            ]
+          },
+          "collectionDate": "2024-08-01",
+          "lab": "Hospital Immunology Lab",
+          "methodology": "Serologic typing (antigen level)",
+          "resolution": "Low-resolution; high-resolution typing recommended for transplant evaluation",
+          "notes": "Patient has history of blood transfusion 2 years ago; PRA testing pending"
+        },
+        "medications": [
+          {
+            "name": "Lisinopril",
+            "dose": "20mg daily",
+            "purpose": "BP control"
+          },
+          {
+            "name": "Furosemide",
+            "dose": "40mg BID",
+            "purpose": "Edema management"
+          },
+          {
+            "name": "Sevelamer",
+            "dose": "800mg TID with meals",
+            "purpose": "Phosphate binder"
+          }
+        ],
+        "comorbidities": [
+          "Hypertension (15 years)",
+          "Type 2 diabetes (8 years)",
+          "Anemia of chronic kidney disease"
+        ]
+      }
+    },
+    "ehrPolicies": {
+      "dataSharing": {
+        "authorizedPartners": [
+          "City General Transplant Center",
+          "Statewide Transplant Network"
+        ],
+        "verificationRequirements": "Must confirm organization NPI, provider credentials, and patient consent",
+        "dataMinimization": "Share only data relevant to specific clinical request",
+        "retention": "Released data available in audit log for 7 years"
+      },
+      "hlaDataFormat": "Our system uses antigen-level reporting per ASHI standards. Allele-level typing available upon special request.",
+      "imagingAccess": "Reports available immediately; actual images require separate PACS access request"
+    },
+    "releaseTemplates": {
+      "dataAuthorization": "Standard form for authorizing release of protected health information for transplant evaluation"
+    }
+  }
+}

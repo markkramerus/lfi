@@ -1,0 +1,201 @@
+{
+  "type": "agent",
+  "agentName": "9_Transplant Referral Transplant Center Agent",
+  "agentId": "transplant_referral_transplant_center_agent",
+  "principal": {
+    "type": "organization",
+    "name": "City General Transplant Center",
+    "description": "Specialized transplant evaluation and coordination organization"
+  },
+  "situation": "A referral has been received for patient John Doe (MRN: TC-12345, DOB: 1980-05-15) for kidney transplant evaluation. Initial intake indicates possible end-stage renal disease, but detailed labs, imaging, and HLA typing from the referring hospital are needed.",
+  "systemPrompt": "You are an agent representing City General Transplant Center. Your role is to evaluate transplant referrals by collaborating with referring hospital agents. Begin by introducing yourself and the referral objective. Confirm patient identity (full name, DOB, MRN/member ID) and the referring provider's details before requesting data. Negotiate specific requirements (e.g., recent labs from last 6 months, imaging reports within 3 months, HLA typing) progressively—ask what formats are available and discuss normalization needs (e.g., HLA antigen to allele conversion for compatibility assessment). Use tools to retrieve internal referral details, normalize received HLA data, and perform suitability analysis only after collecting necessary information. Share only aggregated insights and formal assessments, not raw external data. Favor progressive disclosure: retrieve and share only what's needed for the current evaluation step. When ready to conclude, use the analysis tool to generate the formal assessment report.",
+  "goals": [
+    "Verify referral and patient identity",
+    "Collect and normalize cross-institution labs, imaging, and HLA data",
+    "Evaluate transplant suitability and issue a formal assessment"
+  ],
+  "tools": [
+    {
+      "toolName": "retrieve_referral_details",
+      "description": "Retrieve details about a specific transplant referral from the referral database using natural language query",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language query about the referral (e.g., 'details for patient MRN TC-12345 kidney transplant referral')"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Search knowledgeBase.patientReferrals matching the query. Return as markdown with referral date, referring hospital, initial diagnosis, and contact information.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "normalize_hla_data",
+      "description": "Normalize HLA data from antigen format to allele format using the reference mapping database",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "hlaData": {
+            "type": "object",
+            "description": "HLA data object with antigens to normalize (e.g., {A: ['A1', 'A2'], B: ['B8', 'B44']})"
+          },
+          "normalizationRequest": {
+            "type": "string",
+            "description": "Specific normalization instructions (e.g., 'convert A and B locus antigens to primary alleles')"
+          }
+        },
+        "required": [
+          "hlaData",
+          "normalizationRequest"
+        ]
+      },
+      "synthesisGuidance": "Use knowledgeBase.hlaReference.antigenToAlleleMap to convert provided antigens to alleles. Return as JSON with original antigens, possible alleles, and confidence levels. Include compatibility notes for kidney transplant based on knowledgeBase.hlaReference.compatibilityCriteria.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "analyze_transplant_suitability",
+      "description": "Analyze collected patient data (labs, imaging, HLA) to determine transplant suitability and generate formal assessment",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "patientData": {
+            "type": "object",
+            "description": "Compiled patient data including labs, imaging findings, and normalized HLA typing"
+          },
+          "analysisCriteria": {
+            "type": "string",
+            "description": "Specific analysis focus (e.g., 'kidney transplant candidacy based on renal function and HLA matching potential')"
+          }
+        },
+        "required": [
+          "patientData",
+          "analysisCriteria"
+        ]
+      },
+      "synthesisGuidance": "Analyze the provided patientData against transplant evaluation criteria. Generate a formal suitability report using knowledgeBase.evaluationTemplates.suitabilityReport. Include recommendations, risk assessment, and next steps. Format as professional medical assessment letter.",
+      "endsConversation": true,
+      "conversationEndStatus": "success"
+    },
+    {
+      "toolName": "reject_referral",
+      "description": "Formally reject a transplant referral due to insufficient data or ineligibility and generate rejection notice",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "patientId": {
+            "type": "string",
+            "description": "Patient MRN for the referral"
+          },
+          "rejectionReason": {
+            "type": "string",
+            "description": "Detailed clinical or procedural reason for rejection"
+          }
+        },
+        "required": [
+          "patientId",
+          "rejectionReason"
+        ]
+      },
+      "synthesisGuidance": "Generate formal rejection letter explaining the decision and rationale. Include contact information for appeal process. Use professional medical language.",
+      "endsConversation": true,
+      "conversationEndStatus": "failure"
+    }
+  ],
+  "knowledgeBase": {
+    "patientReferrals": {
+      "TC-12345": {
+        "name": "John Doe",
+        "dob": "1980-05-15",
+        "initialDiagnosis": "End-stage renal disease (ESRD) suspected based on referral",
+        "referralDate": "2024-10-01",
+        "referringHospital": "Regional General Hospital",
+        "referringProvider": "Dr. Emily Carter, Nephrologist",
+        "contactInfo": "emily.carter@regionalgeneral.org, (555) 123-4567",
+        "preliminaryNotes": "Patient reports progressive fatigue and swelling over past 6 months"
+      }
+    },
+    "hlaReference": {
+      "antigenToAlleleMap": {
+        "A1": [
+          "A*01:01",
+          "A*01:02"
+        ],
+        "A2": [
+          "A*02:01",
+          "A*02:02",
+          "A*02:03",
+          "A*02:05",
+          "A*02:06"
+        ],
+        "B8": [
+          "B*08:01",
+          "B*08:02"
+        ],
+        "B44": [
+          "B*44:02",
+          "B*44:03"
+        ],
+        "DR3": [
+          "DRB1*03:01",
+          "DRB1*03:02"
+        ],
+        "DR4": [
+          "DRB1*04:01",
+          "DRB1*04:02",
+          "DRB1*04:03",
+          "DRB1*04:04",
+          "DRB1*04:05"
+        ]
+      },
+      "compatibilityCriteria": {
+        "kidney": {
+          "hlaMatchThreshold": 4,
+          "acceptableMismatches": 2,
+          "preferredAlleles": [
+            "A*02:01",
+            "B*08:01",
+            "DRB1*03:01"
+          ],
+          "riskFactors": [
+            "High PRA levels",
+            "Previous sensitizing events"
+          ]
+        }
+      },
+      "normalizationGuidelines": "When multiple alleles possible for an antigen, select most common or request high-resolution typing"
+    },
+    "evaluationTemplates": {
+      "suitabilityReport": {
+        "header": "Transplant Suitability Assessment - City General Transplant Center",
+        "sections": [
+          "Patient Identification",
+          "Clinical Summary",
+          "Laboratory Analysis",
+          "Imaging Findings",
+          "Immunologic Assessment",
+          "Recommendations",
+          "Next Steps"
+        ],
+        "signature": "Transplant Evaluation Committee"
+      }
+    },
+    "transplantCriteria": {
+      "kidney": {
+        "renalFunction": {
+          "gfrThreshold": 20,
+          "creatinineMax": 4
+        },
+        "comorbidities": [
+          "Uncontrolled diabetes",
+          "Active malignancy",
+          "Recent MI"
+        ],
+        "ageConsiderations": "No strict age limit but comprehensive geriatric assessment for patients >65"
+      }
+    }
+  }
+}

@@ -1,0 +1,191 @@
+{
+  "type": "agent",
+  "agentName": "Coverage Discovery Payer Agent",
+  "agentId": "coverage_discovery_payer_agent",
+  "principal": {
+    "type": "Payer",
+    "name": "Anthem Blue Cross Blue Shield",
+    "description": "A major payer with a Coverage Requirements Discovery service that provides real-time coverage guidance"
+  },
+  "situation": "The CRD service receives queries from provider EHR systems about coverage requirements and responds with specific criteria, prior authorization requirements, and documentation needs.",
+  "systemPrompt": "You are an agent representing Anthem Blue Cross Blue Shield's Coverage Requirements Discovery (CRD) service. You respond to real-time queries from provider EHR systems about coverage requirements, prior authorization needs, and documentation requirements. First, verify the member's identity (full name, DOB, member ID) and confirm the requesting medication and clinical indication. If any information is missing or unclear, ask for clarification. Then use your tools to look up specific coverage policies and requirements. Provide clear, actionable guidance that helps the provider understand what documentation or steps are needed for coverage.",
+  "tools": [
+    {
+      "toolName": "verify_member_coverage",
+      "description": "Verify member identity and active coverage status",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "description": "Member identification number"
+          },
+          "memberName": {
+            "type": "string",
+            "description": "Member full name"
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "description": "Member date of birth (YYYY-MM-DD format)"
+          }
+        },
+        "required": [
+          "memberId",
+          "memberName",
+          "dateOfBirth"
+        ]
+      },
+      "synthesisGuidance": "Look up member in knowledgeBase.memberDatabase and return coverage status, plan details, and eligibility information as JSON."
+    },
+    {
+      "toolName": "lookup_drug_coverage_policy",
+      "description": "Look up coverage policy and requirements for a specific medication",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "medicationName": {
+            "type": "string",
+            "description": "Generic or brand name of medication"
+          },
+          "ndc": {
+            "type": "string",
+            "description": "National Drug Code if available"
+          },
+          "planType": {
+            "type": "string",
+            "description": "Member's plan type (PPO, HMO, etc.)"
+          }
+        },
+        "required": [
+          "medicationName",
+          "planType"
+        ]
+      },
+      "synthesisGuidance": "Search knowledgeBase.drugPolicies for coverage criteria. Return detailed policy information including prior authorization requirements, step therapy requirements, quantity limits, and required documentation as structured JSON."
+    },
+    {
+      "toolName": "check_prior_authorization_status",
+      "description": "Check if prior authorization is required and any existing PA status",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "description": "Member ID"
+          },
+          "medicationName": {
+            "type": "string",
+            "description": "Medication name"
+          }
+        },
+        "required": [
+          "memberId",
+          "medicationName"
+        ]
+      },
+      "synthesisGuidance": "Check knowledgeBase.priorAuthDatabase for any existing prior authorization requests or approvals for this member and medication. Return current status and any pending requirements."
+    },
+    {
+      "toolName": "generate_coverage_requirements_card",
+      "description": "Generate a CRD response card with coverage requirements and next steps",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "description": "Member ID"
+          },
+          "medicationName": {
+            "type": "string",
+            "description": "Requested medication"
+          },
+          "requirements": {
+            "type": "string",
+            "description": "Coverage requirements and documentation needed"
+          },
+          "priorAuthRequired": {
+            "type": "boolean",
+            "description": "Whether prior authorization is required"
+          }
+        },
+        "required": [
+          "memberId",
+          "medicationName",
+          "requirements",
+          "priorAuthRequired"
+        ]
+      },
+      "synthesisGuidance": "Generate a CDS Hooks-style card using knowledgeBase.cardTemplates with clear summary, detailed requirements, and actionable next steps. Format as structured JSON with summary, details, and suggestions sections.",
+      "endsConversation": true,
+      "conversationEndStatus": "success"
+    }
+  ],
+  "knowledgeBase": {
+    "memberDatabase": {
+      "ABC123456789": {
+        "name": "Sarah Johnson",
+        "dob": "1978-09-15",
+        "planType": "PPO",
+        "planName": "Anthem Blue Access PPO",
+        "status": "active",
+        "effectiveDate": "2024-01-01",
+        "pharmacyBenefit": "Express Scripts",
+        "deductibleRemaining": "$1500",
+        "specialtyTierCopay": "$75"
+      }
+    },
+    "drugPolicies": {
+      "adalimumab": {
+        "brandNames": [
+          "Humira",
+          "Adalimumab"
+        ],
+        "ndc": "0074-3799-02",
+        "tier": "specialty",
+        "priorAuthRequired": true,
+        "stepTherapyRequired": true,
+        "stepTherapyDrugs": [
+          "methotrexate",
+          "sulfasalazine",
+          "leflunomide"
+        ],
+        "trialDuration": "3 months minimum each drug",
+        "coverageCriteria": [
+          "Diagnosis of rheumatoid arthritis, ankylosing spondylitis, psoriatic arthritis, or inflammatory bowel disease",
+          "Failed adequate trial of at least 2 conventional DMARDs",
+          "Each DMARD trial must be minimum 3 months at therapeutic doses",
+          "Documented inadequate response or intolerance to conventional therapy",
+          "Laboratory monitoring requirements met"
+        ],
+        "requiredDocumentation": [
+          "Complete treatment history with dates and outcomes",
+          "Current inflammatory markers (CRP, ESR)",
+          "Functional assessment scores",
+          "Contraindications to other therapies if applicable",
+          "Baseline TB screening results"
+        ],
+        "quantityLimits": "40mg/0.8mL pre-filled pen, quantity 2 per 28 days",
+        "ageRestrictions": "18 years and older"
+      }
+    },
+    "priorAuthDatabase": {
+      "ABC123456789": {
+        "adalimumab": {
+          "status": "none",
+          "previousRequests": []
+        }
+      }
+    },
+    "cardTemplates": {
+      "coverage_requirements": {
+        "format": "CDS Hooks Card",
+        "sections": [
+          "summary",
+          "details",
+          "suggestions",
+          "links"
+        ]
+      }
+    }
+  }
+}

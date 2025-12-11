@@ -1,0 +1,110 @@
+{
+  "type": "agent",
+  "agentName": "6_Cohort Creation Provider Analytics Agent",
+  "agentId": "cohort_creation_provider_analytics_agent",
+  "principal": {
+    "type": "organization",
+    "name": "Regional Health Network",
+    "description": "Large multi-site healthcare provider with advanced analytics capabilities"
+  },
+  "situation": "The organization routinely partners with research entities for cohort identification, using secure de-identified analytics to support trial recruitment while maintaining patient privacy.",
+  "systemPrompt": "You are an agent representing Regional Health Network, a healthcare provider organization. First, verify the requesting organization's identity, the trial details (e.g., sponsor, phase, therapeutic area), and confirm that all discussions will use de-identified data only. Ask for key identifiers like trial ID or sponsor credentials if missing. Once verified, collaborate on translating trial criteria into analytics queries. Use tools to run population analytics and share aggregate results. Do not disclose identifiable patient data; focus on cohort feasibility and parameter refinement.",
+  "goals": [
+    "Verify trial sponsor and compliance requirements",
+    "Run de-identified cohort analytics",
+    "Provide feasibility insights for cohort creation"
+  ],
+  "tools": [
+    {
+      "toolName": "query_patient_analytics",
+      "description": "Query de-identified patient population analytics using natural language criteria for cohort feasibility",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language analytics query (e.g., 'count of patients aged 50-70 with hypertension diagnosis in past year, de-identified')"
+          },
+          "filters": {
+            "type": "string",
+            "description": "Optional additional filters (e.g., 'exclude diabetic patients')"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "synthesisGuidance": "Search knowledgeBase.populationData for matching de-identified aggregates. Return results as a JSON object with counts, demographics breakdowns, trends, and feasibility notes. Ensure all outputs are aggregate and non-identifiable. Include confidence intervals for estimates.",
+      "endsConversation": false
+    },
+    {
+      "toolName": "assess_cohort_feasibility",
+      "description": "Assess overall feasibility of a proposed cohort and generate a formal feasibility report before concluding",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "criteria": {
+            "type": "string",
+            "description": "Description of the proposed cohort criteria"
+          },
+          "estimatedSize": {
+            "type": "number",
+            "description": "Expected cohort size"
+          },
+          "timeline": {
+            "type": "string",
+            "description": "Recruitment timeline requirements"
+          }
+        },
+        "required": [
+          "criteria"
+        ]
+      },
+      "synthesisGuidance": "Generate a professional feasibility assessment report from knowledgeBase.templates. Include cohort size estimates, recruitment projections, diversity analysis, and any potential challenges. Format as markdown with recommendations.",
+      "endsConversation": true,
+      "conversationEndStatus": "neutral"
+    }
+  ],
+  "knowledgeBase": {
+    "networkOverview": {
+      "totalPatients": 500000,
+      "specialties": [
+        "Cardiology",
+        "Primary Care",
+        "Endocrinology"
+      ],
+      "geographicCoverage": "Midwest region, urban and rural sites"
+    },
+    "populationData": {
+      "demographics": {
+        "ageDistribution": {
+          "50-59": 15000,
+          "60-69": 12000,
+          "70+": 8000
+        },
+        "conditionsPrevalence": {
+          "hypertension": 45000,
+          "diabetes": 30000,
+          "cardiovascularDisease": 25000
+        }
+      },
+      "historicalCohorts": [
+        {
+          "trial": "Previous cardio trial",
+          "criteria": "Hypertension patients 45-65",
+          "recruited": 250,
+          "timeframe": "3 months"
+        }
+      ],
+      "analyticsCapabilities": {
+        "deIdentification": "HIPAA-compliant aggregation",
+        "queryTypes": [
+          "Demographic filters",
+          "Condition prevalence",
+          "Treatment history aggregates"
+        ],
+        "limitations": "No identifiable data export; minimum cohort size 50 for reporting"
+      }
+    }
+  }
+}

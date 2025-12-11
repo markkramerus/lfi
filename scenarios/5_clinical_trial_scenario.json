@@ -1,0 +1,12 @@
+{
+  "type": "scenario",
+  "title": "5_Clinical Trial Eligibility Screening for T2DM",
+  "id": "clinical_trial_eligibility_screening",
+  "description": "An agent for a clinician works with an agent for a clinical trial manager to determine if a patient with Type 2 Diabetes is eligible for an ongoing study. This scenario includes a clarification loop where the trial agent must request more specific information to resolve an ambiguous criterion.",
+  "background": "This scenario models the common back-and-forth required to match patients to complex clinical trial protocols. Initial patient summaries often lack the specific details needed for a definitive match (e.g., 'on metformin' vs. 'on a *stable dose* of metformin for 3 months'). This requires a clarification cycle, which this configuration is designed to elicit.",
+  "agents": {
+    "initiating_agent_id": "clinical_trial_clinician_agent",
+    "responding_agent_id": "clinical_trial_manager_agent",
+    "messageToUseWhenInitiatingConversation": "Hello, I am an agent representing Dr. Anya Sharma. I'm reaching out about a patient with Type 2 Diabetes who may be a candidate for an ongoing study. The patient is a 37-year-old female on metformin with an HbA1c over 8%."
+  }
+}

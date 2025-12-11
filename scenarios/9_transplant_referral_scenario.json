@@ -1,0 +1,12 @@
+{
+  "type": "scenario",
+  "title": "9_Transplant Referral Evaluation",
+  "id": "transplant_referral_evaluation_hla_normalization",
+  "description": "Transplant center agent evaluates a referral by collaborating with an outside hospital EHR agent to collect labs, imaging, and normalize HLA data formats through conversation.",
+  "background": "In transplant medicine, evaluating a patient referral requires gathering data from the referring hospital's EHR, including recent labs, imaging reports, and HLA typing. Due to varying data formats across institutions, agents must negotiate and normalize HLA data (e.g., converting antigen codes to alleles) via conversational exchange, ensuring compatibility for transplant matching without direct system-to-system integration.",
+  "agents": {
+    "initiating_agent_id": "transplant_referral_transplant_center_agent",
+    "responding_agent_id": "transplant_referral_referring_hospital_agent",
+    "messageToUseWhenInitiatingConversation": "Hello, I'm an agent representing City General Transplant Center. I'm reaching out regarding a transplant referral we received for prospective patient John Doe (DOB: 1980-05-15, our MRN: TC-12345). The referral indicates possible end-stage renal disease requiring kidney transplant evaluation. To proceed efficiently, could you please confirm: 1) Your hospital's MRN for this patient, 2) The referring nephrologist's contact information, and 3) What recent labs, imaging studies, and HLA typing you have available? I'd like to align on our specific documentation requirements and discuss any data format considerations before diving into details."
+  }
+}
